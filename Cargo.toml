@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "ocamlpool/test/Cargo.toml",
+    "rust/macro_test_util",
+    "rust/ocamlrep/Cargo.toml",
+    "rust/ocamlrep_caml_builtins/Cargo.toml",
+    "rust/ocamlrep_custom/Cargo.toml",
+    "rust/ocamlrep_derive/Cargo.toml",
+    "rust/ocamlrep_marshal/cargo/ocamlrep_marshal",
+    "rust/ocamlrep_marshal/cargo/ocamlrep_marshal_ffi_bindings",
+    "rust/ocamlrep_ocamlpool/Cargo.toml",
+    "rust/rust_to_ocaml/attr_parser",
+    "rust/rust_to_ocaml/rust_to_ocaml",
+    "rust/rust_to_ocaml/rust_to_ocaml_attr",
+    "rust/signed_source/Cargo.toml",
+]
