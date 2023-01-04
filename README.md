@@ -1,6 +1,6 @@
 # ocamlrep: Interop Ocaml and Rust code
 
-he goal of this project is make OCaml and Rust code interoperable.
+The goal of this project is make OCaml and Rust code interoperable.
 While in its early stage of development, this library is actively used
 by the [HHVM](https://github.com/facebook/hhvm) project, mostly in the Hack
 type checker, to make ocaml code rely on rust.
