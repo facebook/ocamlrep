@@ -1,0 +1,78 @@
+aliases:
+  - &is_main_branch
+      equal: [ main, << pipeline.git.branch >> ]
+
+commands:
+  setup_linux_env:
+    description: Setup env for Linux
+    steps:
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+      - run: sudo apt-get update
+      - run: sudo apt-get install libssl-dev cmake clang lld opam
+      - run:
+          name: Init opam
+          command: |
+            opam init --compiler=4.14.0 --disable-sandboxing -y
+  setup_macos_env:
+    description: Setup env for macOS
+    steps:
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+      - run:
+          name: Brew install
+          command: |
+            # Avoid: "Error: The `brew link` step did not complete
+            # successfully" (for llvm dependency 'six').
+            rm -f '/usr/local/lib/python3.9/site-packages/six.py'
+            brew install cmake coreutils opam llvm
+      - run:
+          name: Init opam
+          command: |
+            opam init --compiler=4.14.0 --disable-sandboxing -y
+
+version: 2.1
+orbs:
+  rust: circleci/rust@1.6.0
+jobs:
+  linux-build-and-test:
+    description: |
+      Build & test on Linux
+    docker:
+      - image: cimg/rust:1.65.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_linux_env
+      - run:
+          name: Build & test
+          command: |
+            source "$HOME/.cargo/env"
+            opam switch list
+            eval $(opam env)
+            OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
+            cargo build
+            (cd ocamlpool/test&& ./build-test.sh)
+
+  macos-build-and-test:
+    description: |
+      Build and test on macOS
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+    steps:
+      - checkout
+      - setup_macos_env
+      - run:
+          name: Build & test
+          command: |
+            source "$HOME/.cargo/env"
+            opam switch list
+            eval $(opam env)
+            OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
+            cargo build
+            (cd ocamlpool/test&& ./build-test.sh)
+
+workflows:
+  build-test:
+    jobs:
+      - linux-build-and-test
+      - macos-build-and-test
