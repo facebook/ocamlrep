@@ -6,6 +6,8 @@ edition = "2021"
 
 [lib]
 path = "lib.rs"
+test = false
+doctest = false
 
 [dependencies]
 bstr = { version = "1.0", features = ["serde", "std", "unicode"] }

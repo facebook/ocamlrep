@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "ocamlpool",
+    "rust/ocamlrep",
     "ocamlpool/test",
     "rust/macro_test_util",
-    "rust/ocamlrep",
     "rust/ocamlrep_caml_builtins",
     "rust/ocamlrep_custom",
     "rust/ocamlrep_derive",
@@ -14,4 +14,8 @@ members = [
     "rust/rust_to_ocaml/rust_to_ocaml",
     "rust/rust_to_ocaml/rust_to_ocaml_attr",
     "rust/signed_source",
+    "rust/ocamlrep/test/test_bindings",
+    "rust/ocamlrep/test/test_from_ocamlrep",
+    "rust/ocamlrep/test/test_from_ocamlrep_in",
+    "rust/ocamlrep/test/test_add_root",
 ]

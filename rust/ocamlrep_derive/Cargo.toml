@@ -6,7 +6,6 @@ edition = "2021"
 
 [lib]
 path = "lib.rs"
-test = false
 doctest = false
 proc-macro = true
 

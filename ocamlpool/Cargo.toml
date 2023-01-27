@@ -6,6 +6,7 @@ build = "build.rs"
 
 [lib]
 crate-type=["staticlib"]
+test = false
 
 [build-dependencies]
 cc = "1.0.78"

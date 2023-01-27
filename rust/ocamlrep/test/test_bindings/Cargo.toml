@@ -1,0 +1,15 @@
+[package]
+name = "test_bindings"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "../test_bindings.rs"
+test = false
+doctest = false
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+ocamlrep = { path = "../../../../rust/ocamlrep" }
+ocamlrep_ocamlpool = { path = "../../../../rust/ocamlrep_ocamlpool" }
+ocamlrep_caml_builtins = { path = "../../../../rust/ocamlrep_caml_builtins" }

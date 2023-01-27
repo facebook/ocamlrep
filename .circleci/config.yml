@@ -46,11 +46,12 @@ jobs:
           name: Build & test
           command: |
             source "$HOME/.cargo/env"
-            opam switch list
             eval $(opam env)
             OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
             cargo build
-            (cd ocamlpool/test&& ./build-test.sh)
+            cargo test
+            (cd ocamlpool/test&& ./ocamlpool_test.sh)
+            (cd rust/ocamlrep/test&& ./ocamlrep_test.sh)
 
   macos-build-and-test:
     description: |
@@ -65,11 +66,12 @@ jobs:
           name: Build & test
           command: |
             source "$HOME/.cargo/env"
-            opam switch list
             eval $(opam env)
             OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
             cargo build
-            (cd ocamlpool/test&& ./build-test.sh)
+            cargo test
+            (cd ocamlpool/test&& ./ocamlpool_test.sh)
+            (cd rust/ocamlrep/test&& ./ocamlrep_test.sh)
 
 workflows:
   build-test:

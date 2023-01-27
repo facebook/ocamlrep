@@ -6,6 +6,8 @@ edition = "2021"
 
 [lib]
 path = "macro_test_util.rs"
+test = false
+doctest = false
 
 [dependencies]
 proc-macro2 = "1.0.46"

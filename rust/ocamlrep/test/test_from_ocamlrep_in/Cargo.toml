@@ -1,0 +1,13 @@
+[package]
+name = "test_from_ocamlrep_in"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "../test_from_ocamlrep_in.rs"
+doctest = false
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+bumpalo = { version = "3.11.1", features = ["collections"] }
+ocamlrep = { path = "../../../../rust/ocamlrep" }
