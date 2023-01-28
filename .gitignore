@@ -1,2 +1,8 @@
 target
+cargo-out
 Cargo.lock
+*.o
+*.cmx
+*.cmi
+ocamlrep_test
+ocamlpool_test

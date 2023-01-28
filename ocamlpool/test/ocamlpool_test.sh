@@ -10,3 +10,4 @@ ocamlopt.opt -verbose -c ocamlpool_test.ml -o ocamlpool_test_ml.cmx
 ocamlopt.opt -verbose -o ocamlpool_test ocamlpool_test_ml.cmx -ccopt -L"$targets" -cclib -locamlpool_test -cclib -locamlpool
 
 ./ocamlpool_test
+rm ./*.o ./*.cmi ./*.cmx ocamlpool_test

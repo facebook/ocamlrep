@@ -14,4 +14,8 @@ members = [
     "rust/rust_to_ocaml/rust_to_ocaml",
     "rust/rust_to_ocaml/rust_to_ocaml_attr",
     "rust/signed_source",
+    "rust/ocamlrep/test/test_bindings",
+    "rust/ocamlrep/test/test_from_ocamlrep",
+    "rust/ocamlrep/test/test_from_ocamlrep_in",
+    "rust/ocamlrep/test/test_add_root",
 ]

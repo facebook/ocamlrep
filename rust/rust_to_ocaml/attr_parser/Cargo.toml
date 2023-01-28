@@ -6,6 +6,7 @@ edition = "2021"
 
 [lib]
 path = "attr_parser.rs"
+doctest = false
 
 [dependencies]
 syn = { version = "1.0.102", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }

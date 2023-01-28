@@ -8,6 +8,7 @@ edition = "2021"
 path = "ocamlpool_test.rs"
 test = false
 doctest = false
+crate-type = ["lib", "staticlib"]
 
 [dependencies]
 ocamlrep_ocamlpool = { path = "../../rust/ocamlrep_ocamlpool" }
