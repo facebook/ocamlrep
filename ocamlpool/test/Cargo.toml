@@ -6,7 +6,7 @@ edition = "2021"
 
 [lib]
 path = "ocamlpool_test.rs"
-test = false
+test = true # Don't forget to update the buck TARGETS file!
 doctest = false
 crate-type = ["lib", "staticlib"]
 

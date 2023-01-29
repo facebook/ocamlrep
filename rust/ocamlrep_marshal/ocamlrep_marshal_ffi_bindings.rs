@@ -2,6 +2,7 @@
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
+#![feature(exit_status_error)]
 
 use ocamlrep::FromOcamlRep;
 
@@ -33,4 +34,113 @@ unsafe extern "C" fn ocamlrep_marshal_input_value_from_string(
         let pool = ocamlrep_ocamlpool::Pool::new();
         ocamlrep_marshal::input_value(str, &pool).to_bits()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::process::{Command, ExitStatusError};
+    fn cmd(prog: &str, args: &[&str]) -> Command {
+        let mut prog_cmd = Command::new(prog);
+        prog_cmd.args(args);
+        prog_cmd
+    }
+
+    fn ocamlopt_cmd(args: &[&str]) -> Command {
+        cmd("ocamlopt.opt", args)
+    }
+
+    fn sh_cmd(args: &[&str]) -> Command {
+        cmd("sh", args)
+    }
+
+    fn cargo_cmd(args: &[&str]) -> Command {
+        cmd("cargo", args)
+    }
+
+    fn workspace_dir(ds: &[&str]) -> std::path::PathBuf {
+        let mut cargo_cmd = cargo_cmd(&["locate-project", "--workspace", "--message-format=plain"]);
+        let output = cargo_cmd.output().unwrap().stdout;
+        let root_cargo_toml = std::path::Path::new(std::str::from_utf8(&output).unwrap().trim());
+        let mut p = root_cargo_toml.parent().unwrap().to_path_buf();
+        for d in ds {
+            p.push(d);
+        }
+        p
+    }
+
+    fn run(mut cmd: Command) -> Result<(), ExitStatusError> {
+        cmd.spawn().unwrap().wait().ok().unwrap().exit_ok()
+    }
+
+    fn fmt_exit_status_err(err: ExitStatusError) -> String {
+        format!("error status: {err}")
+    }
+
+    fn build_flavor() -> &'static str {
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        }
+    }
+
+    #[test]
+    fn ocamlrep_marshal_test() {
+        let ocamlrep_marshal_dir = "../..";
+
+        let mut compile_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-c",
+            "ocamlrep_marshal_ffi.ml",
+            "-o",
+            "ocamlrep_marshal_ffi.cmx",
+        ]);
+        compile_cmd.current_dir(&ocamlrep_marshal_dir);
+        assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut archive_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-a",
+            "-o",
+            "ocamlrep_marshal_ffi.cmxa",
+            "ocamlrep_marshal_ffi.cmx",
+            "-ccopt",
+            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+            "-cclib",
+            "-locamlrep_marshal_ffi_bindings",
+        ]);
+        archive_cmd.current_dir(&ocamlrep_marshal_dir);
+        assert_eq!(run(archive_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut compile_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-c",
+            "test/test_ocamlrep_marshal.ml",
+            "-o",
+            "test_ocamlrep_marshal_ml.cmx",
+        ]);
+        compile_cmd.current_dir(&ocamlrep_marshal_dir);
+        assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut link_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-o",
+            "ocamlrep_marshal_test",
+            "ocamlrep_marshal_ffi.cmxa",
+            "test_ocamlrep_marshal_ml.cmx",
+            "-ccopt",
+            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+            "-cclib",
+            "-locamlrep_marshal",
+            "-cclib",
+            "-locamlrep_marshal_ffi_bindings",
+            "-cclib",
+            "-locamlpool",
+        ]);
+        link_cmd.current_dir(&ocamlrep_marshal_dir);
+        assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut ocamlrep_marshal_test_cmd = sh_cmd(&["-c", "./ocamlrep_marshal_test"]);
+        ocamlrep_marshal_test_cmd.current_dir("../..");
+        assert_eq!(
+            run(ocamlrep_marshal_test_cmd).map_err(fmt_exit_status_err),
+            Ok(())
+        );
+    }
 }
