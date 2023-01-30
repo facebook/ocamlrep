@@ -11,7 +11,6 @@ This project is stand-alone and requires or works with:
 ## Building ocamlrep
 Assume an opam installation on a `4.14.0` like switch. From the repository root,
 ```bash
-    OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }'); export OCAMLLIB
     cargo build
 ```
 

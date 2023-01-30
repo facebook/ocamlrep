@@ -6,6 +6,7 @@ edition = "2021"
 
 [lib]
 path = "attr_parser.rs"
+test = false
 doctest = false
 
 [dependencies]

@@ -2,6 +2,7 @@
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
+#![feature(exit_status_error)]
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -285,4 +286,39 @@ pub extern "C" fn get_sset(_unit: usize) -> usize {
 pub extern "C" fn roundtrip_int64(value: usize) -> usize {
     let i = unsafe { ocamlrep_caml_builtins::Int64::from_ocaml(value).unwrap() };
     val(i)
+}
+
+#[cfg(test)]
+mod tests {
+    include! {"../../../cargo_test_utils/cargo_test_utils.rs"}
+
+    #[test]
+    fn ocamlrep_test() {
+        let mut compile_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-c",
+            "test_ocamlrep.ml",
+            "-o",
+            "test_ocamlrep_ml.cmx",
+        ]);
+        compile_cmd.current_dir("..");
+        assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut link_cmd = ocamlopt_cmd(&[
+            "-verbose",
+            "-o",
+            "ocamlrep_test",
+            "test_ocamlrep_ml.cmx",
+            "-ccopt",
+            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+            "-cclib",
+            "-ltest_bindings",
+            "-cclib",
+            "-locamlpool",
+        ]);
+        link_cmd.current_dir("..");
+        assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let mut ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlrep_test"]);
+        ocamlpool_test_cmd.current_dir("..");
+        assert_eq!(run(ocamlpool_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+    }
 }

@@ -22,11 +22,15 @@ let test_round_trip show (x : 'a) =
   let _ = Printf.printf "y = %s\n" (show y) in
   assert (x = y)
 
-let show_pair_int_int = [%derive.show: int * int]
+let show_pair_int_int (x, y) = Printf.sprintf "(%d, %d)" x y
 
-let show_pair_opt_int_string = [%derive.show: int option * string]
+let show_pair_opt_int_string (x, y) =
+  let xx = match x with
+  | Some i -> Printf.sprintf "Some %i" i
+  | None -> "None"
+ in Printf.sprintf "(%s, %S)" xx y
 
-let show_float_list = [%derive.show: float list]
+let show_float_list xs = "[" ^ String.concat "; " ( List.map (fun x -> Printf.sprintf "%f" x) xs) ^ "]"
 
 let show_float_array x = show_float_list (Array.to_list x)
 
@@ -94,6 +98,8 @@ let test_sharing () =
     ()
 
 let () =
+  print_endline "[ocamlrep_marshal_test][info]: start";
+
   assert_eq 'c';
   assert_eq 5;
   assert_eq 3.14;
@@ -115,5 +121,7 @@ let () =
   test_round_trip show_tree tree;
 
   test_sharing ();
+
+  print_endline "[ocamlrep_marshal_test][info]: finish";
 
   ()

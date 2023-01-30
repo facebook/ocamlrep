@@ -13,4 +13,8 @@ external test : unit -> unit = "test"
  * in order to allocate memory for ocaml. Calling rust from ocaml
  * is a good way of ensuring this dependecy is built.
  *)
-let () = test ()
+let () = begin
+    print_endline "[ocamlpool_test][info]: start";
+    test ();
+    print_endline "[ocamlpool_test][info]: finish"
+end

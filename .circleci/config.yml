@@ -47,10 +47,7 @@ jobs:
           command: |
             source "$HOME/.cargo/env"
             eval $(opam env)
-            OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
             cargo build
-            (cd ocamlpool/test&& ./ocamlpool_test.sh)
-            (cd rust/ocamlrep/test&& ./ocamlrep_test.sh)
             cargo test
 
   macos-build-and-test:
@@ -67,10 +64,7 @@ jobs:
           command: |
             source "$HOME/.cargo/env"
             eval $(opam env)
-            OCAMLLIB=$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }');export OCAMLLIB
             cargo build
-            (cd ocamlpool/test&& ./ocamlpool_test.sh)
-            (cd rust/ocamlrep/test&& ./ocamlrep_test.sh)
             cargo test
 
 workflows:

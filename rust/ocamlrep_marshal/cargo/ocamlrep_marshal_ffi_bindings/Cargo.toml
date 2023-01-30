@@ -6,7 +6,6 @@ edition = "2021"
 
 [lib]
 path = "../../ocamlrep_marshal_ffi_bindings.rs"
-test = false
 doctest = false
 crate-type = ["lib", "staticlib"]
 
