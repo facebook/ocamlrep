@@ -6,6 +6,7 @@ members = [
     "rust/ocamlrep",
     "rust/ocamlrep_caml_builtins",
     "rust/ocamlrep_custom",
+    "rust/ocamlrep_custom/test",
     "rust/ocamlrep_derive",
     "rust/ocamlrep_marshal/cargo/ocamlrep_marshal",
     "rust/ocamlrep_marshal/cargo/ocamlrep_marshal_ffi_bindings",
