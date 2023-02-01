@@ -42,41 +42,12 @@
 void ocamlpool_enter(void);
 void ocamlpool_leave(void);
 
-/* Memory chunking
- * ===========================================================================
- *
- * Pool memory is allocated by large chunks.
- * The default settings should work well, though it is possible to tweak
- * and monitor these parameters.
- *
- */
-
-/* Number of chunks allocated by ocamlpool since beginning of execution */
-int ocamlpool_allocated_chunks(void);
-
-/* Controlling the size of allocated chunks.
- * >= 512, preferably >= 2^20
- *
- * NOTE: When changing this value, change the magic number in ocamlpool_test.rs
- */
-#define OCAMLPOOL_DEFAULT_SIZE (1024 * 1024)
-size_t ocamlpool_get_next_chunk_size(void);
-void ocamlpool_set_next_chunk_size(size_t sz);
-
-/* Return the current chunk to OCaml memory system */
-void ocamlpool_chunk_release(void);
-
 /* OCaml value allocations
  * ===========================================================================
  *
  * A fast to reserve OCaml memory when inside ocamlpool section.
  */
 
-value ocamlpool_reserve_string(size_t bytes);
-value ocamlpool_reserve_block(int tag, size_t words);
-
-extern color_t ocamlpool_color;
-extern value *ocamlpool_limit, *ocamlpool_cursor, *ocamlpool_bound;
-extern uintnat ocamlpool_generation;
+value ocamlpool_reserve_block(tag_t tag, mlsize_t words);
 
 #endif /*!OCAMLPOOL_H*/
