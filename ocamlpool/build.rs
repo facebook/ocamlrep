@@ -17,6 +17,8 @@ fn ocamllib_dir() -> std::path::PathBuf {
 }
 
 fn main() {
+    // Tell Cargo that if the given file changes, to rerun this build script.
+    println!("cargo:rerun-if-changed=ocamlpool.c");
     cc::Build::new()
         .include(ocamllib_dir().as_path().to_str().unwrap())
         .file("ocamlpool.c")
