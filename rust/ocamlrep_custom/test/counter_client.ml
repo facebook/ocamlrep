@@ -14,8 +14,11 @@ external counter_inc : counter -> unit = "counter_inc"
 
 external counter_read : counter -> int = "counter_read"
 
-let () =
+let () = begin
+  print_endline "[counter_test][info]: start";
   let counter = counter_new () in
   assert (counter_read counter == 0);
   counter_inc counter;
-  assert (counter_read counter == 1)
+  assert (counter_read counter == 1);
+  print_endline "[counter_test][info]: finish";
+end

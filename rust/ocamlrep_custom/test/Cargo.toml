@@ -7,6 +7,7 @@ edition = "2021"
 [lib]
 path = "counter.rs"
 doctest = false
+crate-type = ["lib", "staticlib"]
 
 [dependencies]
 ocamlrep_custom = { path = ".." }

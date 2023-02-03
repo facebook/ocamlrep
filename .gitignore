@@ -6,3 +6,4 @@ Cargo.lock
 *.cmi
 ocamlrep_test
 ocamlpool_test
+counter_test
