@@ -4,10 +4,27 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef OCAMLPOOL_H
-#define OCAMLPOOL_H
+#if !defined(OCAMLPOOL_H)
+#  define OCAMLPOOL_H
 
-#include <caml/mlvalues.h>
+#  include <caml/version.h>
+#  include <caml/mlvalues.h>
+
+/* OCamlpool sections
+ * ===========================================================================
+ *
+ * Inside the section, the OCaml heap will be in an invalid state.
+ * OCaml runtime functions should not be called.
+ *
+ * Since the GC will never run while in an OCaml pool section,
+ * it is safe to keep references to OCaml values as long as these does not
+ * outlive the section.
+ */
+
+void ocamlpool_enter(void);
+void ocamlpool_leave(void);
+
+#  if OCAML_VERSION < 50000
 
 /*
  * FIXME: The current system always maintain the heap in a well formed state,
@@ -28,20 +45,6 @@
  *          before next GC.
  */
 
-/* OCamlpool sections
- * ===========================================================================
- *
- * Inside the section, the OCaml heap will be in an invalid state.
- * OCaml runtime functions should not be called.
- *
- * Since the GC will never run while in an OCaml pool section,
- * it is safe to keep references to OCaml values as long as these does not
- * outlive the section.
- */
-
-void ocamlpool_enter(void);
-void ocamlpool_leave(void);
-
 /* Memory chunking
  * ===========================================================================
  *
@@ -59,7 +62,7 @@ int ocamlpool_allocated_chunks(void);
  *
  * NOTE: When changing this value, change the magic number in ocamlpool_test.rs
  */
-#define OCAMLPOOL_DEFAULT_SIZE (1024 * 1024)
+#  define OCAMLPOOL_DEFAULT_SIZE (1024 * 1024)
 size_t ocamlpool_get_next_chunk_size(void);
 void ocamlpool_set_next_chunk_size(size_t sz);
 
@@ -73,10 +76,37 @@ void ocamlpool_chunk_release(void);
  */
 
 value ocamlpool_reserve_string(size_t bytes);
+
 value ocamlpool_reserve_block(int tag, size_t words);
 
 extern color_t ocamlpool_color;
 extern value *ocamlpool_limit, *ocamlpool_cursor, *ocamlpool_bound;
 extern uintnat ocamlpool_generation;
 
-#endif /*!OCAMLPOOL_H*/
+#  else
+
+/* OCamlpool sections
+ * ===========================================================================
+ *
+ * Inside the section, the OCaml heap will be in an invalid state.
+ * OCaml runtime functions should not be called.
+ *
+ * Since the GC will never run while in an OCaml pool section,
+ * it is safe to keep references to OCaml values as long as these does not
+ * outlive the section.
+ */
+
+void ocamlpool_enter(void);
+void ocamlpool_leave(void);
+
+/* OCaml value allocations
+ * ===========================================================================
+ *
+ * A fast to reserve OCaml memory when inside ocamlpool section.
+ */
+
+value ocamlpool_reserve_block(tag_t tag, mlsize_t words);
+
+#  endif /* OCAML_VERSION < 50000 */
+
+#endif /* !defined(OCAMLPOOL_H) */

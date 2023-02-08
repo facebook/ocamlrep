@@ -290,7 +290,7 @@ pub extern "C" fn roundtrip_int64(value: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    include! {"../../../cargo_test_utils/cargo_test_utils.rs"}
+    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
 
     #[test]
     fn ocamlrep_test() {
