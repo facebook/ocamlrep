@@ -7,11 +7,17 @@ edition = "2021"
 readme = "../README.md"
 repository = "https://github.com/facebook/ocamlrep/"
 license = "MIT"
+build = "build.rs"
 
 [lib]
 path = "lib.rs"
+test = false
 doctest = false
+crate-type = ["lib", "staticlib"]
 
 [dependencies]
 bumpalo = { version = "3.11.1", features = ["collections"] }
 ocamlrep = { path = "../ocamlrep" }
+
+[build-dependencies]
+cc = "1.0.78"

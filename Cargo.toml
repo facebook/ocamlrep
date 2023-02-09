@@ -1,7 +1,5 @@
 [workspace]
 members = [
-    "ocamlpool",
-    "ocamlpool/test",
     "macro_test_util",
     "ocamlrep",
     "ocamlrep_caml_builtins",
@@ -11,6 +9,7 @@ members = [
     "ocamlrep_marshal/cargo/ocamlrep_marshal",
     "ocamlrep_marshal/cargo/ocamlrep_marshal_ffi_bindings",
     "ocamlrep_ocamlpool",
+    "ocamlrep_ocamlpool/test",
     "rust_to_ocaml/attr_parser",
     "rust_to_ocaml/rust_to_ocaml",
     "rust_to_ocaml/rust_to_ocaml_attr",

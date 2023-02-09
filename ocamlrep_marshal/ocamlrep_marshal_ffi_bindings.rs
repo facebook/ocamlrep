@@ -86,7 +86,7 @@ mod tests {
             "-cclib",
             "-locamlrep_marshal_ffi_bindings",
             "-cclib",
-            "-locamlpool",
+            "-locamlrep_ocamlpool",
         ]);
         link_cmd.current_dir("../..");
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));

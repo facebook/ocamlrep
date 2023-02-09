@@ -58,7 +58,7 @@ mod tests {
             "-cclib",
             "-locamlpool_test",
             "-cclib",
-            "-locamlpool",
+            "-locamlrep_ocamlpool",
         ]);
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
         let ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlpool_test"]);
