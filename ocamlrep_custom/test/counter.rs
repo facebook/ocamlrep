@@ -35,7 +35,7 @@ ocaml_ffi! {
 
 #[cfg(test)]
 mod tests {
-    include! {"../../../cargo_test_utils/cargo_test_utils.rs"}
+    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
 
     #[test]
     fn counter_test() {

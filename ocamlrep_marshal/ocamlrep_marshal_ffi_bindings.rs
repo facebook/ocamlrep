@@ -38,7 +38,7 @@ unsafe extern "C" fn ocamlrep_marshal_input_value_from_string(
 
 #[cfg(test)]
 mod tests {
-    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
+    include! {"../cargo_test_utils/cargo_test_utils.rs"}
 
     #[test]
     fn ocamlrep_marshal_test() {

@@ -8,6 +8,35 @@
 #define OCAMLPOOL_H
 
 #include <caml/mlvalues.h>
+#include <caml/version.h>
+
+/* OCamlpool sections
+ * ===========================================================================
+ *
+ * Inside the section, the OCaml heap will be in an invalid state.
+ * OCaml runtime functions should not be called.
+ *
+ * Since the GC will never run while in an OCaml pool section,
+ * it is safe to keep references to OCaml values as long as these does not
+ * outlive the section.
+ */
+
+void ocamlpool_enter(void);
+void ocamlpool_leave(void);
+
+/* OCaml value allocations
+ * ===========================================================================
+ *
+ * Reserve OCaml memory when inside ocamlpool section.
+ */
+
+#if OCAML_VERSION < 50000
+value ocamlpool_reserve_block(int tag, size_t words);
+#else
+value ocamlpool_reserve_block(tag_t tag, mlsize_t words);
+#endif
+
+#if OCAML_VERSION < 50000
 
 /*
  * FIXME: The current system always maintain the heap in a well formed state,
@@ -27,20 +56,6 @@
  *        - add it to freelist on release, so that memory can be reclaimed
  *          before next GC.
  */
-
-/* OCamlpool sections
- * ===========================================================================
- *
- * Inside the section, the OCaml heap will be in an invalid state.
- * OCaml runtime functions should not be called.
- *
- * Since the GC will never run while in an OCaml pool section,
- * it is safe to keep references to OCaml values as long as these does not
- * outlive the section.
- */
-
-void ocamlpool_enter(void);
-void ocamlpool_leave(void);
 
 /* Memory chunking
  * ===========================================================================
@@ -66,17 +81,12 @@ void ocamlpool_set_next_chunk_size(size_t sz);
 /* Return the current chunk to OCaml memory system */
 void ocamlpool_chunk_release(void);
 
-/* OCaml value allocations
- * ===========================================================================
- *
- * A fast to reserve OCaml memory when inside ocamlpool section.
- */
-
 value ocamlpool_reserve_string(size_t bytes);
-value ocamlpool_reserve_block(int tag, size_t words);
 
 extern color_t ocamlpool_color;
 extern value *ocamlpool_limit, *ocamlpool_cursor, *ocamlpool_bound;
 extern uintnat ocamlpool_generation;
 
-#endif /*!OCAMLPOOL_H*/
+#endif /* OCAML_VERSION < 50000 */
+
+#endif /* !defined(OCAMLPOOL_H) */
