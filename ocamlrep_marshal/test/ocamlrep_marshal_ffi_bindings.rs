@@ -38,46 +38,22 @@ unsafe extern "C" fn ocamlrep_marshal_input_value_from_string(
 
 #[cfg(test)]
 mod tests {
-    include! {"../cargo_test_utils/cargo_test_utils.rs"}
+    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
 
     #[test]
     fn ocamlrep_marshal_test() {
-        let mut compile_cmd = ocamlopt_cmd(&[
+        let compile_cmd = ocamlopt_cmd(&[
             "-verbose",
             "-c",
-            "ocamlrep_marshal_ffi.ml",
-            "-o",
-            "ocamlrep_marshal_ffi.cmx",
-        ]);
-        compile_cmd.current_dir("../..");
-        assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut archive_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-a",
-            "-o",
-            "ocamlrep_marshal_ffi.cmxa",
-            "ocamlrep_marshal_ffi.cmx",
-            "-ccopt",
-            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
-            "-cclib",
-            "-locamlrep_marshal_ffi_bindings",
-        ]);
-        archive_cmd.current_dir("../..");
-        assert_eq!(run(archive_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut compile_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-c",
-            "test/test_ocamlrep_marshal.ml",
+            "test_ocamlrep_marshal.ml",
             "-o",
             "test_ocamlrep_marshal_ml.cmx",
         ]);
-        compile_cmd.current_dir("../..");
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut link_cmd = ocamlopt_cmd(&[
+        let link_cmd = ocamlopt_cmd(&[
             "-verbose",
             "-o",
             "ocamlrep_marshal_test",
-            "ocamlrep_marshal_ffi.cmxa",
             "test_ocamlrep_marshal_ml.cmx",
             "-ccopt",
             &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
@@ -88,10 +64,8 @@ mod tests {
             "-cclib",
             "-locamlrep_ocamlpool",
         ]);
-        link_cmd.current_dir("../..");
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut ocamlrep_marshal_test_cmd = sh_cmd(&["-c", "./ocamlrep_marshal_test"]);
-        ocamlrep_marshal_test_cmd.current_dir("../..");
+        let ocamlrep_marshal_test_cmd = sh_cmd(&["-c", "./ocamlrep_marshal_test"]);
         assert_eq!(
             run(ocamlrep_marshal_test_cmd).map_err(fmt_exit_status_err),
             Ok(())

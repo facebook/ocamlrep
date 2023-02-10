@@ -21,6 +21,6 @@ fn main() {
     println!("cargo:rerun-if-changed=../../ocaml_version.c");
     cc::Build::new()
         .include(ocamllib_dir().as_path().to_str().unwrap())
-        .file("../../ocaml_version.c")
+        .file("ocaml_version.c")
         .compile("ocaml_version");
 }
