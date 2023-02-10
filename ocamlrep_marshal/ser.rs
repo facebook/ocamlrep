@@ -18,6 +18,10 @@ use ocamlrep::Value;
 
 use crate::intext::*;
 
+extern "C" {
+    static ocaml_version: usize;
+}
+
 bitflags::bitflags! {
     /// Flags affecting marshaling
     pub struct ExternFlags: u8 {
@@ -399,16 +403,20 @@ impl<'a, W: Write> State<'a, W> {
             self.write(PREFIX_SMALL_BLOCK + tag + ((sz as u8) << 4))
         } else {
             // Note: ocaml-14.4.0 uses `Caml_white` (`0 << 8`)
-            // ('caml/runtime/gc.h'). That's why we use this here, so that we
-            // may test what this program generates vs. ocaml-4.14.0 in use
-            // today.
+            // ('caml/runtime/gc.h').
             //
-            // In PR https://github.com/ocaml/ocaml/pull/10831, in commit
+            // In ocaml-5, via PR https://github.com/ocaml/ocaml/pull/10831, in
+            // commit
             // `https://github.com/ocaml/ocaml/commit/868265f4532a2cc33bbffd83221c9613e743d759`
             // this becomes,
             //   let hd: header_t = Make_header(sz, tag, NOT_MARKABLE);
             // where, `NOT_MARKABLE` (`3 << 8`) ('caml/runtime/shared_heap.h').
-            let hd = Header::with_color(sz, tag, ocamlrep::Color::White).to_bits();
+            let color = if unsafe { ocaml_version } < 50000 {
+                ocamlrep::Color::White
+            } else {
+                ocamlrep::Color::Black
+            };
+            let hd = Header::with_color(sz, tag, color).to_bits();
 
             if sz > 0x3FFFFF && self.flags.contains(ExternFlags::COMPAT_32) {
                 panic!("output_value: array cannot be read back on 32-bit platform");
