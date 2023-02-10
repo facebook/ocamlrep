@@ -392,4 +392,8 @@ value ocamlpool_reserve_block(tag_t tag, mlsize_t wosize) {
   return Val_hp(p);
 }
 
+// This definition is provided for backwards compatibility with OCaml 4.x's
+// `ocamlrep_ocamlpool` implementation.
+uintnat ocamlpool_generation = 0;
+
 #endif /* OCAML_VERSION < 50000 */

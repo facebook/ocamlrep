@@ -85,8 +85,11 @@ value ocamlpool_reserve_string(size_t bytes);
 
 extern color_t ocamlpool_color;
 extern value *ocamlpool_limit, *ocamlpool_cursor, *ocamlpool_bound;
-extern uintnat ocamlpool_generation;
 
 #endif /* OCAML_VERSION < 50000 */
+
+// Defined for now in the `OCAML_VERSION >= 50000` case too for compatibility
+// with the expectations of `ocamlrep_ocamlpool`.
+extern uintnat ocamlpool_generation;
 
 #endif /* !defined(OCAMLPOOL_H) */
