@@ -38,17 +38,26 @@ ocaml_ffi! {
 mod tests {
     include! {"../../cargo_test_utils/cargo_test_utils.rs"}
 
+    use anyhow::Result;
+    use tempdir::TempDir;
+
     #[test]
-    fn ocamlpool_test() {
-        let compile_cmd = ocamlopt_cmd(&[
+    fn ocamlpool_test() -> Result<()> {
+        let tmp_dir = TempDir::new("ocamlpool_test")?;
+        std::fs::copy(
+            "ocamlpool_test.ml",
+            tmp_dir.path().join("ocamlpool_test.ml"),
+        )?;
+        let mut compile_cmd = ocamlopt_cmd(&[
             "-verbose",
             "-c",
             "ocamlpool_test.ml",
             "-o",
             "ocamlpool_test_ml.cmx",
         ]);
+        compile_cmd.current_dir(tmp_dir.path());
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(&[
+        let mut link_cmd = ocamlopt_cmd(&[
             "-verbose",
             "-o",
             "ocamlpool_test",
@@ -60,8 +69,12 @@ mod tests {
             "-cclib",
             "-locamlrep_ocamlpool",
         ]);
+        link_cmd.current_dir(tmp_dir.path());
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlpool_test"]);
+        let ocamlpool_test_cmd =
+            sh_cmd_with_current_dir(&["-c", "./ocamlpool_test"], tmp_dir.path());
         assert_eq!(run(ocamlpool_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+        tmp_dir.close()?;
+        Ok(())
     }
 }

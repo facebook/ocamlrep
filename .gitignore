@@ -7,6 +7,5 @@ Cargo.lock
 *.a
 *.cmxa
 ocamlrep_test
-ocamlpool_test
 counter_test
 ocamlrep_marshal_test
