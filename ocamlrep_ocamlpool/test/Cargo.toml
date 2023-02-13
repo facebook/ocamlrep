@@ -14,4 +14,6 @@ doctest = false
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
+anyhow = "1.0.65"
 ocamlrep_ocamlpool = { path = ".." }
+tempdir = "0.3"

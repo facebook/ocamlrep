@@ -34,34 +34,102 @@ ocaml_ffi! {
     }
 }
 
+// Hack! Trick buck into believing that these libraries are used. See [Note:
+// Test blocks for Cargo] later in this file.
+const _: () = {
+    #[allow(unused_imports)]
+    use anyhow;
+    #[allow(unused_imports)]
+    use tempdir;
+};
+
+// [Note: Test blocks for Cargo]
+// -----------------------------
+// With buck, where testing involves compiling OCaml we make use of
+// `ocaml_binary` & `custom_unnittest` rules.
+//
+// When testing with cargo we instead use `#[cfg(test_blocks)]` within which we
+// compile OCaml "manually" using the rust `command` crate. Thus, in these cases
+// the `#[cfg(test)]` blocks are for cargo only & not buck. We express that
+// according to the following schema:
+// ```
+//  rust_library(
+//     name = "foo_test",
+//     ...
+//     autocargo = {
+//       ...
+//       "test": True, // Yes, unittests for Cargo...
+//       ...
+//     },
+//     ...
+//     unittests=False, // No! No, no unittests for Buck!
+//     ...
+//  )
+//```
+//
+// If in such a `#[cfg(test)]` block we now wish to use a crate not otherwise
+// dependend upon & put it in the target's `deps` section in `TARGETS` there
+// will be an unsused-crate error. If we put it in the target's `test_deps`
+// section in `TARGETS` buck will rightly complain that `unittests=False` (so
+// how can there be `tests_deps`?).
+//
+// The workaround I employ is to "fake" use of the third-party crates in non
+// `#[cfg(test)]` code. That way they can be enumerated in the `deps` and are
+// thereby availabe for use in the `#[cfg(test)]` blocks.
+
 #[cfg(test)]
 mod tests {
     include! {"../../cargo_test_utils/cargo_test_utils.rs"}
 
+    use anyhow::Result;
+    use tempdir::TempDir;
+
     #[test]
-    fn ocamlpool_test() {
-        let compile_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-c",
+    fn ocamlpool_test() -> Result<()> {
+        let tmp_dir = TempDir::new("ocamlpool_test")?;
+        std::fs::copy(
             "ocamlpool_test.ml",
-            "-o",
-            "ocamlpool_test_ml.cmx",
-        ]);
+            tmp_dir.path().join("ocamlpool_test.ml"),
+        )?;
+        let compile_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-c",
+                "ocamlpool_test.ml",
+                "-o",
+                "ocamlpool_test_ml.cmx",
+            ],
+            Some(tmp_dir.path()),
+        );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-o",
-            "ocamlpool_test",
-            "ocamlpool_test_ml.cmx",
-            "-ccopt",
-            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
-            "-cclib",
-            "-locamlpool_test",
-            "-cclib",
-            "-locamlrep_ocamlpool",
-        ]);
+        let link_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-o",
+                "ocamlpool_test",
+                "ocamlpool_test_ml.cmx",
+                "-ccopt",
+                &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+                "-cclib",
+                "-locamlpool_test",
+                "-cclib",
+                "-locamlrep_ocamlpool",
+            ],
+            Some(tmp_dir.path()),
+        );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlpool_test"]);
+        let ocamlpool_test_cmd = cmd(
+            tmp_dir
+                .path()
+                .join("ocamlpool_test")
+                .as_path()
+                .to_str()
+                .unwrap(),
+            &[],
+            None,
+        );
         assert_eq!(run(ocamlpool_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+        tmp_dir.close()?;
+        Ok(())
     }
 }

@@ -42,30 +42,36 @@ mod tests {
 
     #[test]
     fn ocamlrep_marshal_test() {
-        let compile_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-c",
-            "test_ocamlrep_marshal.ml",
-            "-o",
-            "test_ocamlrep_marshal_ml.cmx",
-        ]);
+        let compile_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-c",
+                "test_ocamlrep_marshal.ml",
+                "-o",
+                "test_ocamlrep_marshal_ml.cmx",
+            ],
+            None,
+        );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-o",
-            "ocamlrep_marshal_test",
-            "test_ocamlrep_marshal_ml.cmx",
-            "-ccopt",
-            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
-            "-cclib",
-            "-locamlrep_marshal",
-            "-cclib",
-            "-locamlrep_marshal_ffi_bindings",
-            "-cclib",
-            "-locamlrep_ocamlpool",
-        ]);
+        let link_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-o",
+                "ocamlrep_marshal_test",
+                "test_ocamlrep_marshal_ml.cmx",
+                "-ccopt",
+                &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+                "-cclib",
+                "-locamlrep_marshal",
+                "-cclib",
+                "-locamlrep_marshal_ffi_bindings",
+                "-cclib",
+                "-locamlrep_ocamlpool",
+            ],
+            None,
+        );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let ocamlrep_marshal_test_cmd = sh_cmd(&["-c", "./ocamlrep_marshal_test"]);
+        let ocamlrep_marshal_test_cmd = sh_cmd(&["-c", "./ocamlrep_marshal_test"], None);
         assert_eq!(
             run(ocamlrep_marshal_test_cmd).map_err(fmt_exit_status_err),
             Ok(())

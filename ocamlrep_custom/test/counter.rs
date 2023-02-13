@@ -39,28 +39,34 @@ mod tests {
 
     #[test]
     fn counter_test() {
-        let compile_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-c",
-            "counter_client.ml",
-            "-o",
-            "counter_client_ml.cmx",
-        ]);
+        let compile_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-c",
+                "counter_client.ml",
+                "-o",
+                "counter_client_ml.cmx",
+            ],
+            None,
+        );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-o",
-            "counter_test",
-            "counter_client_ml.cmx",
-            "-ccopt",
-            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
-            "-cclib",
-            "-lcounter",
-            "-cclib",
-            "-locamlrep_ocamlpool",
-        ]);
+        let link_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-o",
+                "counter_test",
+                "counter_client_ml.cmx",
+                "-ccopt",
+                &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+                "-cclib",
+                "-lcounter",
+                "-cclib",
+                "-locamlrep_ocamlpool",
+            ],
+            None,
+        );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let counter_test_cmd = sh_cmd(&["-c", "./counter_test"]);
+        let counter_test_cmd = sh_cmd(&["-c", "./counter_test"], None);
         assert_eq!(run(counter_test_cmd).map_err(fmt_exit_status_err), Ok(()));
     }
 }

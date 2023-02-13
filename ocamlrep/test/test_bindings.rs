@@ -294,31 +294,35 @@ mod tests {
 
     #[test]
     fn ocamlrep_test() {
-        let mut compile_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-c",
-            "test_ocamlrep.ml",
-            "-o",
-            "test_ocamlrep_ml.cmx",
-        ]);
-        compile_cmd.current_dir("..");
+        let parent = std::path::Path::new("..");
+        let compile_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-c",
+                "test_ocamlrep.ml",
+                "-o",
+                "test_ocamlrep_ml.cmx",
+            ],
+            Some(&parent),
+        );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut link_cmd = ocamlopt_cmd(&[
-            "-verbose",
-            "-o",
-            "ocamlrep_test",
-            "test_ocamlrep_ml.cmx",
-            "-ccopt",
-            &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
-            "-cclib",
-            "-ltest_bindings",
-            "-cclib",
-            "-locamlrep_ocamlpool",
-        ]);
-        link_cmd.current_dir("..");
+        let link_cmd = ocamlopt_cmd(
+            &[
+                "-verbose",
+                "-o",
+                "ocamlrep_test",
+                "test_ocamlrep_ml.cmx",
+                "-ccopt",
+                &("-L".to_owned() + workspace_dir(&["target", build_flavor()]).to_str().unwrap()),
+                "-cclib",
+                "-ltest_bindings",
+                "-cclib",
+                "-locamlrep_ocamlpool",
+            ],
+            Some(&parent),
+        );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let mut ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlrep_test"]);
-        ocamlpool_test_cmd.current_dir("..");
+        let ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlrep_test"], Some(&parent));
         assert_eq!(run(ocamlpool_test_cmd).map_err(fmt_exit_status_err), Ok(()));
     }
 }
