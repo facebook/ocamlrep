@@ -14,6 +14,9 @@ doctest = false
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
+anyhow = "1.0.65"
+cargo_test_utils = { path = "../../cargo_test_utils" }
 ocamlrep = { path = "../../ocamlrep" }
 ocamlrep_marshal = { path = ".." }
 ocamlrep_ocamlpool = { path = "../../ocamlrep_ocamlpool" }
+tempdir = "0.3"

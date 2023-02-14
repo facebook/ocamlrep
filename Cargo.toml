@@ -12,6 +12,7 @@ members = [
     "rust_to_ocaml/rust_to_ocaml_attr",
     "signed_source",
 
+    "cargo_test_utils",
     "ocamlrep_custom/test",
     "ocamlrep_ocamlpool/test",
     "ocamlrep_marshal/test",

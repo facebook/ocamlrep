@@ -36,9 +36,20 @@ unsafe extern "C" fn ocamlrep_marshal_input_value_from_string(
     })
 }
 
+// Hack! Trick buck into believing that these libraries are used. See [Note:
+// Test blocks for Cargo] in `ocamlrep_ocamlpool/test/ocamlpool_test.rs`.
+const _: () = {
+    #[allow(unused_imports)]
+    use anyhow;
+    #[allow(unused_imports)]
+    use cargo_test_utils;
+    #[allow(unused_imports)]
+    use tempdir;
+};
+
 #[cfg(test)]
 mod tests {
-    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
+    use cargo_test_utils::*;
 
     #[test]
     fn ocamlrep_marshal_test() {

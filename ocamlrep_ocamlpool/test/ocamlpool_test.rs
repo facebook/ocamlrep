@@ -40,6 +40,8 @@ const _: () = {
     #[allow(unused_imports)]
     use anyhow;
     #[allow(unused_imports)]
+    use cargo_test_utils;
+    #[allow(unused_imports)]
     use tempdir;
 };
 
@@ -79,9 +81,8 @@ const _: () = {
 
 #[cfg(test)]
 mod tests {
-    include! {"../../cargo_test_utils/cargo_test_utils.rs"}
-
     use anyhow::Result;
+    use cargo_test_utils::*;
     use tempdir::TempDir;
 
     #[test]

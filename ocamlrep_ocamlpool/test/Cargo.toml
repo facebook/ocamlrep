@@ -15,5 +15,6 @@ crate-type = ["lib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0.65"
+cargo_test_utils = { path = "../../cargo_test_utils" }
 ocamlrep_ocamlpool = { path = ".." }
 tempdir = "0.3"
