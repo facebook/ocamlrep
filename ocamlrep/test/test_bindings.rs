@@ -301,12 +301,20 @@ const _: () = {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
     use cargo_test_utils::*;
+    use tempdir::TempDir;
 
     #[test]
-    fn ocamlrep_test() {
+    fn ocamlrep_test() -> Result<()> {
         let parent = std::path::Path::new("..");
-        let compile_cmd = ocamlopt_cmd(
+        let tmp_dir = TempDir::new("ocamlrep_test")?;
+        std::fs::copy(
+            parent.join("test_ocamlrep.ml"),
+            tmp_dir.path().join("test_ocamlrep.ml"),
+        )?;
+        let compile_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-c",
@@ -314,10 +322,11 @@ mod tests {
                 "-o",
                 "test_ocamlrep_ml.cmx",
             ],
-            Some(&parent),
+            Some(&tmp_dir.path()),
         );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(
+        let link_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-o",
@@ -330,10 +339,21 @@ mod tests {
                 "-cclib",
                 "-locamlrep_ocamlpool",
             ],
-            Some(&parent),
+            Some(&tmp_dir.path()),
         );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let ocamlpool_test_cmd = sh_cmd(&["-c", "./ocamlrep_test"], Some(&parent));
-        assert_eq!(run(ocamlpool_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+        let ocamlrep_test_cmd = cmd(
+            tmp_dir
+                .path()
+                .join("ocamlrep_test")
+                .as_path()
+                .to_str()
+                .unwrap(),
+            &[],
+            None,
+        );
+        assert_eq!(run(ocamlrep_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+        tmp_dir.close()?;
+        Ok(())
     }
 }

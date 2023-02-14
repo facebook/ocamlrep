@@ -46,11 +46,19 @@ const _: () = {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
     use cargo_test_utils::*;
+    use tempdir::TempDir;
 
     #[test]
-    fn counter_test() {
-        let compile_cmd = ocamlopt_cmd(
+    fn counter_test() -> Result<()> {
+        let tmp_dir = TempDir::new("ocamlrep_custom_test")?;
+        std::fs::copy(
+            "counter_client.ml",
+            tmp_dir.path().join("counter_client.ml"),
+        )?;
+        let compile_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-c",
@@ -58,10 +66,11 @@ mod tests {
                 "-o",
                 "counter_client_ml.cmx",
             ],
-            None,
+            Some(tmp_dir.path()),
         );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(
+        let link_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-o",
@@ -74,10 +83,21 @@ mod tests {
                 "-cclib",
                 "-locamlrep_ocamlpool",
             ],
-            None,
+            Some(tmp_dir.path()),
         );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let counter_test_cmd = sh_cmd(&["-c", "./counter_test"], None);
+        let counter_test_cmd = cmd(
+            tmp_dir
+                .path()
+                .join("counter_test")
+                .as_path()
+                .to_str()
+                .unwrap(),
+            &[],
+            None,
+        );
         assert_eq!(run(counter_test_cmd).map_err(fmt_exit_status_err), Ok(()));
+        tmp_dir.close()?;
+        Ok(())
     }
 }

@@ -92,7 +92,8 @@ mod tests {
             "ocamlpool_test.ml",
             tmp_dir.path().join("ocamlpool_test.ml"),
         )?;
-        let compile_cmd = ocamlopt_cmd(
+        let compile_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-c",
@@ -103,7 +104,8 @@ mod tests {
             Some(tmp_dir.path()),
         );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
-        let link_cmd = ocamlopt_cmd(
+        let link_cmd = cmd(
+            "ocamlopt.opt",
             &[
                 "-verbose",
                 "-o",

@@ -1,11 +1,3 @@
 target
 cargo-out
 Cargo.lock
-*.o
-*.cmx
-*.cmi
-*.a
-*.cmxa
-ocamlrep_test
-counter_test
-ocamlrep_marshal_test

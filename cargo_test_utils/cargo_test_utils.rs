@@ -16,20 +16,12 @@ pub fn cmd(prog: &str, args: &[&str], dir: Option<&std::path::Path>) -> Command 
     prog_cmd
 }
 
-pub fn ocamlopt_cmd(args: &[&str], dir: Option<&std::path::Path>) -> Command {
-    cmd("ocamlopt.opt", args, dir)
-}
-
-pub fn sh_cmd(args: &[&str], dir: Option<&std::path::Path>) -> Command {
-    cmd("sh", args, dir)
-}
-
-pub fn cargo_cmd(args: &[&str]) -> Command {
-    cmd("cargo", args, None)
-}
-
 pub fn workspace_dir(ds: &[&str]) -> std::path::PathBuf {
-    let mut cargo_cmd = cargo_cmd(&["locate-project", "--workspace", "--message-format=plain"]);
+    let mut cargo_cmd = cmd(
+        "cargo",
+        &["locate-project", "--workspace", "--message-format=plain"],
+        None,
+    );
     let output = cargo_cmd.output().unwrap().stdout;
     let root_cargo_toml = std::path::Path::new(std::str::from_utf8(&output).unwrap().trim());
     let mut p = root_cargo_toml.parent().unwrap().to_path_buf();
