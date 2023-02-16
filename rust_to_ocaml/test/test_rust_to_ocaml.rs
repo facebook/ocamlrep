@@ -73,7 +73,7 @@ fn run_test_cases(opts: &Opts) -> anyhow::Result<()> {
 
 fn run_test_case(opts: &Opts, test_case: &Path) -> anyhow::Result<Result<(), String>> {
     let exp_path = expected_output_path(test_case);
-    let expected = std::fs::read_to_string(&exp_path)?;
+    let expected = std::fs::read_to_string(exp_path)?;
     let actual = rust_to_ocaml(opts, test_case)?;
     if expected == actual {
         Ok(Ok(()))
@@ -112,7 +112,7 @@ fn update_snapshots(opts: &Opts) -> anyhow::Result<()> {
     for test_case in test_cases {
         let exp_path = expected_output_path(&test_case);
         let actual = rust_to_ocaml(opts, &test_case)?;
-        if let Some(expected) = std::fs::read_to_string(&exp_path).ok() {
+        if let Ok(expected) = std::fs::read_to_string(&exp_path) {
             if expected == actual {
                 continue;
             }

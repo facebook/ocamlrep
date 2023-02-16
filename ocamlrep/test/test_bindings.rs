@@ -196,12 +196,12 @@ pub extern "C" fn get_abcdefgh_string(_unit: usize) -> usize {
 
 #[no_mangle]
 pub extern "C" fn get_zero_float(_unit: usize) -> usize {
-    val(0.0 as f64)
+    val(0.0_f64)
 }
 
 #[no_mangle]
 pub extern "C" fn get_one_two_float(_unit: usize) -> usize {
-    val(1.2 as f64)
+    val(1.2_f64)
 }
 
 // Variant tests

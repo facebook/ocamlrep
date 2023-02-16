@@ -26,7 +26,7 @@ fn expected_int_but_got_block() {
     let err = isize::from_ocamlrep(value).err().unwrap();
     match err {
         ExpectedInt(..) => {}
-        _ => panic!("unexpected error: {}", err.to_string()),
+        _ => panic!("unexpected error: {}", err),
     }
 }
 
@@ -132,7 +132,7 @@ fn expected_unit_struct_but_got_block() {
     let err = UnitStruct::from_ocamlrep(value).err().unwrap();
     match err {
         ExpectedInt(..) => {}
-        _ => panic!("unexpected error: {}", err.to_string()),
+        _ => panic!("unexpected error: {}", err),
     }
 }
 
