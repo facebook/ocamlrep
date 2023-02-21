@@ -351,7 +351,7 @@ pub use value::Value;
 // TODO: find the right forever home for these constants
 
 // 'mlvalues.h'
-pub const MAX_WOSIZE: usize = ((1_isize << 54) - 1) as usize;
+pub const MAX_WOSIZE: u64 = ((1_i64 << 54) - 1) as u64;
 pub const DOUBLE_WOSIZE: usize = std::mem::size_of::<f64>() / std::mem::size_of::<usize>();
 
 // 'gc.h'
