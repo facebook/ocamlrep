@@ -348,10 +348,7 @@ pub use ocamlrep_derive::FromOcamlRepIn;
 pub use ocamlrep_derive::ToOcamlRep;
 pub use value::Value;
 
-// TODO: find the right forever home for these constants
-
 // 'mlvalues.h'
-pub const MAX_WOSIZE: usize = ((1_isize << 54) - 1) as usize;
 pub const DOUBLE_WOSIZE: usize = std::mem::size_of::<f64>() / std::mem::size_of::<usize>();
 
 // 'gc.h'
