@@ -773,7 +773,8 @@ impl ToOcamlRep for OsStr {
 
     #[cfg(target_arch = "wasm32")]
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
-        panic!()
+        use std::os::wasi::ffi::OsStrExt;
+        alloc.add(self.as_bytes())
     }
 }
 
@@ -786,7 +787,8 @@ impl ToOcamlRep for &'_ OsStr {
 
     #[cfg(target_arch = "wasm32")]
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
-        panic!()
+        use std::os::wasi::ffi::OsStrExt;
+        alloc.add(self.as_bytes())
     }
 }
 
@@ -801,7 +803,10 @@ impl<'a> FromOcamlRepIn<'a> for &'a OsStr {
 
     #[cfg(target_arch = "wasm32")]
     fn from_ocamlrep_in<'b>(value: Value<'b>, alloc: &'a Bump) -> Result<Self, FromError> {
-        panic!()
+        use std::os::wasi::ffi::OsStrExt;
+        Ok(std::ffi::OsStr::from_bytes(<&'a [u8]>::from_ocamlrep_in(
+            value, alloc,
+        )?))
     }
 }
 
@@ -822,7 +827,10 @@ impl FromOcamlRep for OsString {
 
     #[cfg(target_arch = "wasm32")]
     fn from_ocamlrep(value: Value<'_>) -> Result<Self, FromError> {
-        panic!()
+        use std::os::wasi::ffi::OsStrExt;
+        Ok(OsString::from(std::ffi::OsStr::from_bytes(
+            bytes_from_ocamlrep(value)?,
+        )))
     }
 }
 
