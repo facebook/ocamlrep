@@ -19,7 +19,7 @@ use ocamlrep::Value;
 use crate::intext::*;
 
 extern "C" {
-    static ocaml_version: usize;
+    fn ocaml_version() -> usize;
 }
 
 bitflags::bitflags! {
@@ -411,7 +411,15 @@ impl<'a, W: Write> State<'a, W> {
             // this becomes,
             //   let hd: header_t = Make_header(sz, tag, NOT_MARKABLE);
             // where, `NOT_MARKABLE` (`3 << 8`) ('caml/runtime/shared_heap.h').
-            let color = if unsafe { ocaml_version } < 50000 {
+
+            // Check the prevailing OCaml version is well initialized & one
+            // we've tested for.
+            let which_ocaml = unsafe { ocaml_version() };
+            if ![41400, 50000].contains(&which_ocaml) {
+                panic!("unexpected ocaml version: {which_ocaml}!");
+            }
+
+            let color = if which_ocaml < 50000 {
                 ocamlrep::Color::White
             } else {
                 ocamlrep::Color::Black
