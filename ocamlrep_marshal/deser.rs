@@ -299,7 +299,7 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
                                 _ => {
                                     match current_block {
                                         READ_SHARED_LABEL => {
-                                            v = self.intern_obj_table[(self.obj_counter - ofs)];
+                                            v = self.intern_obj_table[self.obj_counter - ofs];
                                         }
                                         _ /* READ_DOUBLE_ARRAY_LABEL */ => {
                                             size = len * ocamlrep::DOUBLE_WOSIZE;
