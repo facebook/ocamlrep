@@ -1,3 +1,5 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
 // Assume an opam environment (`eval "$(opam env --switch=default
 // --set-switch)"`) then to find the prevailing standard library caml
 // headers, `OCAMLLIB=$(ocamlopt.opt -config | grep standard_library:
