@@ -1,3 +1,8 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 // Assume an opam environment (`eval "$(opam env --switch=default
 // --set-switch)"`) then to find the prevailing standard library caml
 // headers, `OCAMLLIB=$(ocamlopt.opt -config | grep standard_library:
