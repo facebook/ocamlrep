@@ -1,0 +1,15 @@
+# #[no_std] cannot be built with shared linkage
+preferred_linkage = "static"
+
+[[buildscript]]
+[buildscript.rustc_flags]
+
+# Third-party glibc points to x84_64 C runtime only compatible with server platforms.
+[platform_fixup.'cfg(target_env = "fbcode")']
+buildscript = []
+extra_deps = [
+    "third-party//glibc:c",
+    "third-party//glibc:rt",
+    "third-party//glibc:util",
+    "third-party//glibc:pthread",
+]
