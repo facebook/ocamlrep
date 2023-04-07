@@ -55,8 +55,8 @@ def _requires_no_srcs_environment(ctx: "context") -> bool.type:
     return _NO_SRCS_ENVIRONMENT_LABEL in ctx.attrs.labels
 
 # We don't want to use cache mode in open source because the config keys that drive it aren't wired up
-_USE_CACHE_MODE = True  # @oss-disable
-# @oss-enable: _USE_CACHE_MODE = False
+# @oss-disable: _USE_CACHE_MODE = True 
+_USE_CACHE_MODE = False # @oss-enable
 
 # Extra attributes required by every genrule based on genrule_impl
 def genrule_attributes() -> {str.type: "attribute"}:

@@ -37,7 +37,7 @@ def _mk_rule(rule_spec: "") -> "rule":
 
     # Fat platforms is an idea specific to our toolchains, so doesn't apply to
     # open source. Ideally this restriction would be done at the toolchain level.
-    # @oss-enable: fat_platform_compatible = True
+    fat_platform_compatible = True # @oss-enable
 
     if not fat_platform_compatible:
         # copy so we don't try change the passed in object

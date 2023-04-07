@@ -959,6 +959,6 @@ def omnibus_environment_attr():
     })
 
     # In open source, we don't want to use omnibus
-    # @oss-enable: default = None
+    default = None # @oss-enable
 
     return attrs.option(attrs.dep(), default = default)
