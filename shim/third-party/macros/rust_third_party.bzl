@@ -42,7 +42,7 @@ def _make_cmd(mode, buildscript, package_name, version, features, cfgs, env, tar
         ("target", target_override or _get_native_host_triple()),
     ]
 
-    cmd = "$(exe root//third-party/macros:build_rs)"
+    cmd = "$(exe shim//third-party/macros:build_rs)"
     # We don't want to quote the $OUT flag as it might end in \ on Windows, which would then escape the quote
     cmd += " --output=$OUT"
     for flag, value in flags:
