@@ -3,73 +3,157 @@ aliases:
       equal: [ main, << pipeline.git.branch >> ]
 
 commands:
-  setup_linux_env:
-    description: Setup env for Linux
+  install_rust_toolchain:
+    description: Install a rust toolchain
     steps:
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
-      - run: sudo apt-get update
-      - run: sudo apt-get install libssl-dev cmake clang lld opam
+      - run:
+          name: Download rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly-2023-01-24 -y
+
+  init_opam:
+    description: Initialize opam
+    steps:
       - run:
           name: Init opam
           command: |
             opam init --compiler=4.14.0 --disable-sandboxing -y
-  setup_macos_env:
-    description: Setup env for macOS
+
+  setup_linux_env:
+    description: Linux installation steps
     steps:
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+      - install_rust_toolchain
+      - run:
+          name: Aptitude install
+          command: |
+            sudo apt-get update
+            sudo apt-get install libssl-dev cmake clang lld opam
+      - init_opam
+      - run:
+          name: Set environment variables
+          command: |
+            echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
+            echo 'eval $(opam env)' >> "$BASH_ENV"
+
+  setup_macos_env:
+    description: macOS installation steps
+    steps:
+      - install_rust_toolchain
       - run:
           name: Brew install
           command: |
             # Avoid `brew link` step errors
             rm -f '/usr/local/lib/python3.9/site-packages/six.py'
             brew unlink python@3.9
-
             brew install cmake coreutils opam llvm
+      - init_opam
       - run:
-          name: Init opam
+          name: Set environment variables
           command: |
-            opam init --compiler=4.14.0 --disable-sandboxing -y
+            echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
+            echo 'eval $(opam env)' >> "$BASH_ENV"
+            echo 'export PATH=/usr/local/opt/llvm/bin:"$PATH"' >> "$BASH_ENV"
+
+  cargo_build_and_test:
+    description: Use cargo to build & test
+    steps:
+      - run:
+          name: Cargo build & test
+          command: |
+            cargo build
+            cargo test
+
+  install_buck:
+    description: Use cargo to install buck
+    steps:
+      - run:
+          name: Install buck
+          command: |
+            cargo +nightly-2023-01-24 install --git https://github.com/facebook/buck2.git buck2 --force
+
+  install_reindeer:
+    description: Use cargo to install reindeer
+    steps:
+      - run:
+          name: Install reindeer
+          command: |
+            cargo +nightly-2023-01-24 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
+
+  reindeer_rust_deps:
+    description: Use reindeer to vendor & buckify rust 3rd-party deps
+    steps:
+      - run:
+          name: Run reindeer steps
+          command: |
+            reindeer --third-party-dir shim/third-party/rust vendor
+            reindeer --third-party-dir shim/third-party/rust buckify
+
+  buck2_build_rust_deps:
+    description: Use buck to build rust 3rd-party deps
+    steps:
+      - run:
+          name: Run buck steps
+          command: |
+            buck2 build fbsource//third-party/rust/... -v 2
 
 version: 2.1
 orbs:
   rust: circleci/rust@1.6.0
 jobs:
-  linux-build-and-test:
+  linux-cargo-build-and-test:
     description: |
-      Build & test on Linux
+      Linux cargo build & test
     docker:
       - image: cimg/rust:1.65.0
     resource_class: xlarge
     steps:
       - checkout
       - setup_linux_env
-      - run:
-          name: Build & test
-          command: |
-            source "$HOME/.cargo/env"
-            eval $(opam env)
-            cargo build
-            cargo test
+      - cargo_build_and_test
 
-  macos-build-and-test:
+  macos-cargo-build-and-test:
     description: |
-      Build and test on macOS
+      macOS cargo build & test
     macos:
       xcode: 13.4.1
     resource_class: large
     steps:
       - checkout
       - setup_macos_env
-      - run:
-          name: Build & test
-          command: |
-            source "$HOME/.cargo/env"
-            eval $(opam env)
-            cargo build
-            cargo test
+      - cargo_build_and_test
+
+  linux-buck-build:
+    description: |
+      Linux buck build
+    docker:
+      - image: cimg/rust:1.65.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_linux_env
+      - install_buck
+      - install_reindeer
+      - reindeer_rust_deps
+      - buck2_build_rust_deps
+
+  macos-buck-build:
+    description: |
+      macOS buck build
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+    steps:
+      - checkout
+      - setup_macos_env
+      - install_buck
+      - install_reindeer
+      - reindeer_rust_deps
+      - buck2_build_rust_deps
 
 workflows:
   build-test:
     jobs:
-      - linux-build-and-test
-      - macos-build-and-test
+      - linux-cargo-build-and-test
+      - macos-cargo-build-and-test
+      - linux-buck-build
+      - macos-buck-build
