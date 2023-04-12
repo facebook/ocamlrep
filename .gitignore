@@ -1,3 +1,8 @@
 target
 cargo-out
 Cargo.lock
+buck-out
+shim/third-party/rust/BUCK
+shim/third-party/rust/vendor
+**/.DS_Store
+**/.cargo
