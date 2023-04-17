@@ -1,0 +1,19 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "macro_test_util",
+    srcs = ["macro_test_util.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+            "test": False,
+        },
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbsource//third-party/rust:proc-macro2",
+    ],
+)
