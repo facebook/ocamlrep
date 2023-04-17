@@ -103,6 +103,6 @@ def _fix_dep(x: "string") -> [
     "string",
 ]:
     if x.startswith("fbcode//common/ocaml/interop/"):
-        return "root//" + x.removeprefix("fbcode//common/ocaml/interop")
+        return "root//" + x.removeprefix("fbcode//common/ocaml/interop/")
     else:
         return x

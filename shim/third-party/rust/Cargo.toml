@@ -29,7 +29,7 @@ quote = "1.0"
 regex = "1.6.0"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.136", features = ["derive", "rc"] }
-syn = { version = "1.0.102", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+syn1 = { package = "syn", version = "1.0.102", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 synstructure = "0.12"
 tempdir = "0.3.7"
 thiserror = "1.0.36"
