@@ -36,10 +36,11 @@ def rust_library(
         test_deps = None,
         test_env = None,
         autocargo = None,
+        unittests = None,
         mapped_srcs = {},
         visibility = ["PUBLIC"],
         **kwargs):
-    _unused = (test_deps, test_env, named_deps, autocargo)  # @unused
+    _unused = (test_deps, test_env, named_deps, autocargo, unittests)  # @unused
     deps = _maybe_select_map(deps, _fix_deps)
     mapped_srcs = _maybe_select_map(mapped_srcs, _fix_mapped_srcs)
     if os_deps:
