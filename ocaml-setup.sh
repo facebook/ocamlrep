@@ -1,4 +1,4 @@
-# shellcheck disable=SC2148
+#!/bin/bash
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
@@ -17,9 +17,6 @@ then
     echo "opam is not installed, which is a dependency for building targets in ocaml."
     exit
 fi
-
-# Bring the OCaml toolchain into scope.
-eval "$(opam env --switch=4.14.0 --set-switch)"
 
 # Link 'shim/third-party/ocaml/standard_library'.
 if [ ! -L shim/third-party/ocaml/standard_library ]; then
