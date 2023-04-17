@@ -4,5 +4,7 @@ Cargo.lock
 buck-out
 shim/third-party/rust/BUCK
 shim/third-party/rust/vendor
+shim/third-party/ocaml/opam
+shim/third-party/ocaml/standard_library
 **/.DS_Store
 **/.cargo
