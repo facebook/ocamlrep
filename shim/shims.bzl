@@ -12,6 +12,22 @@ _SELECT_TYPE = type(select({"DEFAULT": []}))
 def is_select(thing):
     return type(thing) == _SELECT_TYPE
 
+def cpp_library(
+        deps = [],
+        external_deps = [],
+        undefined_symbols = None,
+        visibility = ["PUBLIC"],
+        **kwargs):
+    _unused = (undefined_symbols)  # @unused
+
+    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    native.cxx_library(
+        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        visibility = visibility,
+        preferred_linkage = "static",
+        **kwargs
+    )
+
 def rust_library(
         rustc_flags = [],
         deps = [],
@@ -104,5 +120,16 @@ def _fix_dep(x: "string") -> [
 ]:
     if x.startswith("fbcode//common/ocaml/interop/"):
         return "root//" + x.removeprefix("fbcode//common/ocaml/interop/")
+    elif x.startswith("fbcode//third-party-buck/platform010/build/supercaml"):
+        return "shim//third-party/ocaml" + x.removeprefix("fbcode//third-party-buck/platform010/build/supercaml")
     else:
         return x
+
+# Do a nasty conversion of e.g. ("supercaml", None, "ocaml-dev") to
+# 'fbcode//third-party-buck/platform010/build/supercaml:ocaml-dev'
+# (which will then get mapped to `shim//third-party/ocaml:ocaml-dev`).
+def external_dep_to_target(t):
+    return "fbcode//third-party-buck/platform010/build/{}:{}".format(t[0], t[2])
+
+def external_deps_to_targets(ts):
+    return [external_dep_to_target(t) for t in ts]
