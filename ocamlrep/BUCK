@@ -1,0 +1,24 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "ocamlrep",
+    srcs = glob(["*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+        },
+    },
+    doctests = False,
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbcode//common/ocaml/interop/ocamlrep_derive:ocamlrep_derive",
+        "fbsource//third-party/rust:bstr",
+        "fbsource//third-party/rust:bumpalo",
+        "fbsource//third-party/rust:indexmap",
+        "fbsource//third-party/rust:rustc-hash",
+        "fbsource//third-party/rust:serde",
+    ],
+)

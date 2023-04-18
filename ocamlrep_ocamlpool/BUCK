@@ -1,0 +1,46 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+cpp_library(
+    # @autodeps-skip
+    name = "ocamlpool-cpp",
+    srcs = ["ocamlpool.c"],
+    headers = ["ocamlpool.h"],
+    undefined_symbols = True,
+    external_deps = [("supercaml", None, "ocaml-dev")],
+)
+
+rust_library(
+    name = "ocamlrep_ocamlpool",
+    srcs = glob(["*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+        },
+        "cargo_toml_config": {
+            "dependencies_override": {
+                "build-dependencies": {
+                    "cc": {"version": "1.0.78"},
+                },
+            },
+            "package": {
+                "build": "build.rs",
+            },
+        },
+    },
+    doctests = False,
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,
+    deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        "fbsource//third-party/rust:bumpalo",
+        ":ocamlpool-cpp",
+    ],
+)
