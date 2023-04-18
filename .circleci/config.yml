@@ -19,6 +19,15 @@ commands:
           command: |
             opam init --compiler=4.14.0 --disable-sandboxing -y
 
+  setup_ocaml_tp:
+    description: Write symlinks shim/third-party/ocaml
+    steps:
+      - run:
+          name: Setup third-party/ocaml directory
+          command: |
+            # Assumes OPAM_SWITCH_PREFIX has been set already.
+            ./ocaml-setup.sh
+
   setup_linux_env:
     description: Linux installation steps
     steps:
@@ -34,6 +43,7 @@ commands:
           command: |
             echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
             echo 'eval $(opam env)' >> "$BASH_ENV"
+      - setup_ocaml_tp
 
   setup_macos_env:
     description: macOS installation steps
@@ -53,8 +63,9 @@ commands:
             echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
             echo 'eval $(opam env)' >> "$BASH_ENV"
             echo 'export PATH=/usr/local/opt/llvm/bin:"$PATH"' >> "$BASH_ENV"
+      - setup_ocaml_tp
 
-  cargo_build_and_test:
+  cargo:
     description: Use cargo to build & test
     steps:
       - run:
@@ -79,7 +90,7 @@ commands:
           command: |
             cargo +nightly-2023-01-24 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
 
-  reindeer_rust_deps:
+  reindeer:
     description: Use reindeer to vendor & buckify rust 3rd-party deps
     steps:
       - run:
@@ -88,13 +99,21 @@ commands:
             reindeer --third-party-dir shim/third-party/rust vendor
             reindeer --third-party-dir shim/third-party/rust buckify
 
-  buck2_build_rust_deps:
-    description: Use buck to build rust 3rd-party deps
+  buck_tp:
+    description: Use buck to build third-party deps
     steps:
       - run:
-          name: Run buck steps
+          name: Build 3rd party rust.
           command: |
-            buck2 build fbsource//third-party/rust/... -v 2
+            buck2 build shim//third-party/... -v 2
+
+  buck_ocamlrep:
+    description: Use buck to build ocamlrep
+    steps:
+      - run:
+          name: Build ocamlrep.
+          command: |
+            buck2 build root//... -v 2
 
 version: 2.1
 orbs:
@@ -109,7 +128,7 @@ jobs:
     steps:
       - checkout
       - setup_linux_env
-      - cargo_build_and_test
+      - cargo
 
   macos-cargo-build-and-test:
     description: |
@@ -120,7 +139,7 @@ jobs:
     steps:
       - checkout
       - setup_macos_env
-      - cargo_build_and_test
+      - cargo
 
   linux-buck-build:
     description: |
@@ -133,8 +152,9 @@ jobs:
       - setup_linux_env
       - install_buck
       - install_reindeer
-      - reindeer_rust_deps
-      - buck2_build_rust_deps
+      - reindeer
+      - buck_tp
+      - buck_ocamlrep
 
   macos-buck-build:
     description: |
@@ -147,8 +167,9 @@ jobs:
       - setup_macos_env
       - install_buck
       - install_reindeer
-      - reindeer_rust_deps
-      - buck2_build_rust_deps
+      - reindeer
+      - buck_tp
+      - buck_ocamlrep
 
 workflows:
   build-test:

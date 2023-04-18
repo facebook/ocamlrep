@@ -1,4 +1,6 @@
-# shellcheck disable=SC2148
+#!/bin/bash
+
+set -euxo pipefail
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
@@ -7,19 +9,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-# The commands in this script are to be executed in the current shell and so
-# invoke it via the builtin 'source' command e.g. `source ocaml-setup.sh`. The
-# script assumes an opam installation. It activates the '4.14.0' switch and
-# writes symlinks to opam into 'shim/third-party/ocaml/'.
-
 if ! command -v opam &> /dev/null
 then
     echo "opam is not installed, which is a dependency for building targets in ocaml."
     exit
 fi
-
-# Bring the OCaml toolchain into scope.
-eval "$(opam env --switch=4.14.0 --set-switch)"
 
 # Link 'shim/third-party/ocaml/standard_library'.
 if [ ! -L shim/third-party/ocaml/standard_library ]; then
