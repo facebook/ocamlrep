@@ -1,0 +1,21 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "ocamlrep_derive",
+    srcs = ["lib.rs"],
+    proc_macro = True,
+    rustc_flags = RUST_FLAGS_2018,
+    test_deps = [
+        "fbcode//common/ocaml/interop/macro_test_util:macro_test_util",
+        "fbsource//third-party/rust:anyhow",
+    ],
+    deps = [
+        "fbsource//third-party/rust:proc-macro2",
+        "fbsource//third-party/rust:quote",
+        "fbsource//third-party/rust:syn1",
+        "fbsource//third-party/rust:synstructure",
+    ],
+)
