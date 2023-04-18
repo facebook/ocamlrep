@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "shim/third-party/rust",
+
     "macro_test_util",
     "ocamlrep",
     "ocamlrep_caml_builtins",
