@@ -10,6 +10,7 @@ const _: () = {
     use bstr;
     use bitflags;
     use bumpalo;
+    use clap;
     use convert_case;
     use derive_more;
     use hex;
