@@ -1,0 +1,23 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "signed_source",
+    srcs = ["signed_source.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+        },
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbsource//third-party/rust:bstr",
+        "fbsource//third-party/rust:hex",
+        "fbsource//third-party/rust:md-5",
+        "fbsource//third-party/rust:once_cell",
+        "fbsource//third-party/rust:regex",
+        "fbsource//third-party/rust:thiserror",
+    ],
+)
