@@ -57,12 +57,13 @@ def rust_library(
 def rust_binary(
         rustc_flags = [],
         deps = [],
+        autocargo = None,
         unittests = None,
         allocator = None,
         default_strip_mode = None,
         visibility = ["PUBLIC"],
         **kwargs):
-    _unused = (unittests, allocator, default_strip_mode)  # @unused
+    _unused = (unittests, allocator, default_strip_mode, autocargo)  # @unused
     deps = _maybe_select_map(deps, _fix_deps)
 
     # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
