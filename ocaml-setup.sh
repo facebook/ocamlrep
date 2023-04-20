@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euxo pipefail
-
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under both the MIT license found in the
@@ -9,9 +7,16 @@ set -euxo pipefail
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+set -euxo pipefail
+
 if ! command -v opam &> /dev/null
 then
     echo "opam is not installed, which is a dependency for building targets in ocaml."
+    exit
+fi
+
+if [ -z "$OPAM_SWITCH_PREFIX" ]; then
+    echo "OPAM_SWITCH_PREFIX is undefined. First execute \`eval (\$opam env)\` and then try running $0 again."
     exit
 fi
 
