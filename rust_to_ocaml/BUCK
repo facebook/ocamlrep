@@ -1,0 +1,61 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_binary(
+    name = "rust_to_ocaml",
+    srcs = glob(["src/**/*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+            "test": False,
+        },
+        "cargo_toml_dir": "rust_to_ocaml",
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbcode//common/ocaml/interop/signed_source:signed_source",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:clap-3",
+        "fbsource//third-party/rust:convert_case",
+        "fbsource//third-party/rust:derive_more",
+        "fbsource//third-party/rust:indexmap",
+        "fbsource//third-party/rust:serde",
+        "fbsource//third-party/rust:syn1",
+        "fbsource//third-party/rust:toml",
+        ":attr_parser",
+    ],
+)
+
+rust_library(
+    name = "rust_to_ocaml_attr",
+    srcs = glob(["attr/**/*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+            "test": False,
+        },
+        "cargo_toml_dir": "rust_to_ocaml_attr",
+    },
+    proc_macro = True,
+    rustc_flags = RUST_FLAGS_2018,
+)
+
+rust_library(
+    name = "attr_parser",
+    srcs = glob(["attr_parser/**/*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "doctest": False,
+            "test": False,
+        },
+        "cargo_toml_dir": "attr_parser",
+    },
+    doctests = False,
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbsource//third-party/rust:syn1",
+    ],
+)
