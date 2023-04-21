@@ -135,7 +135,7 @@ jobs:
       macOS cargo build & test
     macos:
       xcode: 13.4.1
-    resource_class: large
+    resource_class: macos.x86.medium.gen2
     steps:
       - checkout
       - setup_macos_env
@@ -161,7 +161,7 @@ jobs:
       macOS buck build
     macos:
       xcode: 13.4.1
-    resource_class: large
+    resource_class: macos.x86.medium.gen2
     steps:
       - checkout
       - setup_macos_env
