@@ -148,6 +148,3 @@ def external_dep_to_target(t):
 
 def external_deps_to_targets(ts):
     return [external_dep_to_target(t) for t in ts]
-
-def custom_unittest(**_):
-    pass

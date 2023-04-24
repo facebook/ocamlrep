@@ -5,5 +5,12 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-def custom_unittest(**_):
+def buck_command_alias(**_):
     pass
+
+def buck_filegroup(visibility = ["PUBLIC"], **kwargs):
+    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    native.filegroup(
+        visibility = visibility,
+        **kwargs
+    )
