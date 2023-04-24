@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#![allow(unused_crate_dependencies)]
 #![feature(exit_status_error)]
 
 use ocamlrep_ocamlpool::ocaml_ffi;
@@ -34,17 +35,6 @@ ocaml_ffi! {
     }
 }
 
-// Hack! Trick buck into believing that these libraries are used. See [Note:
-// Test blocks for Cargo] later in this file.
-const _: () = {
-    #[allow(unused_imports)]
-    use anyhow;
-    #[allow(unused_imports)]
-    use cargo_test_utils;
-    #[allow(unused_imports)]
-    use tempdir;
-};
-
 // [Note: Test blocks for Cargo]
 // -----------------------------
 // With buck, where testing involves compiling OCaml we make use of
@@ -75,9 +65,9 @@ const _: () = {
 // section in `TARGETS` buck will rightly complain that `unittests=False` (so
 // how can there be `tests_deps`?).
 //
-// The workaround I employ is to "fake" use of the third-party crates in non
-// `#[cfg(test)]` code. That way they can be enumerated in the `deps` and are
-// thereby availabe for use in the `#[cfg(test)]` blocks.
+// The workaround I employ is to add `allow(unused_crate_dependencies)` to this
+// module. That way they can be enumerated in the `deps` and are thereby
+// availabe for use in the `#[cfg(test)]` blocks.
 
 #[cfg(test)]
 mod tests {
