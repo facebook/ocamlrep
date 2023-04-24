@@ -74,6 +74,19 @@ def rust_binary(
         **kwargs
     )
 
+def ocaml_binary(
+        deps = [],
+        visibility = ["PUBLIC"],
+        **kwargs):
+    deps = _maybe_select_map(deps, _fix_deps)
+
+    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    native.ocaml_binary(
+        deps = deps,
+        visibility = visibility,
+        **kwargs
+    )
+
 # Configuration that is used when building open source using Buck2 as
 # the build system. E.g. not applied either internally, or when using
 # Cargo to build the open source code. At the moment of writing,
@@ -135,3 +148,6 @@ def external_dep_to_target(t):
 
 def external_deps_to_targets(ts):
     return [external_dep_to_target(t) for t in ts]
+
+def custom_unittest(**_):
+    pass
