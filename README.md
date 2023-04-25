@@ -4,15 +4,17 @@ The goal of this project is to make OCaml and Rust code interoperable. While in 
 
 ## Requirements
 This project is stand-alone and requires or works with:
-
   - OCaml 4.14.0;
-  - A rust nightly toolchain.
+  - A rust nightly toolchain [^1].
+
+[^1] If you plan on using Buck2 for [building ocamlrep](#building-ocamlrep) we recommend `nightly-2023-01-24` at this time.
 
 ## Building ocamlrep
-Assume an opam installation on a `4.x` or `5.0`switch. From the repository root,
-```bash
-    cargo build
-```
+
+There are two build methods. One way is to use [Cargo](https://doc.rust-lang.org/cargo/guide/cargo-home.html) and the other is to use [Buck2](https://buck2.build/).
+
+- Cargo: Install OPAM then `cargo build`.
+- Buck2: See this guide for [Building ocamlrep with Buck2](README-BUCK.md).
 
 ## Contributing
 See the [CONTRIBUTING](CONTRIBUTING.md) file for how to help out.
