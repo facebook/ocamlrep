@@ -43,6 +43,10 @@ commands:
           command: |
             echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
             echo 'eval $(opam env)' >> "$BASH_ENV"
+      - run:
+          name: Examine environment
+          command: |
+            env
       - setup_ocaml_tp
 
   setup_macos_env:
@@ -113,7 +117,7 @@ commands:
       - run:
           name: Build ocamlrep.
           command: |
-            buck2 build root//... -v 2
+            buck2 build root//... -v 7
 
 version: 2.1
 orbs:

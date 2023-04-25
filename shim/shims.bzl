@@ -51,6 +51,7 @@ def rust_library(
         rustc_flags = rustc_flags + [_CFG_BUCK_OSS_BUILD],
         deps = deps,
         visibility = visibility,
+        preferred_linkage = "static",
         **kwargs
     )
 
