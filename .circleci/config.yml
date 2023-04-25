@@ -36,7 +36,7 @@ commands:
           name: Aptitude install
           command: |
             sudo apt-get update
-            sudo apt-get install libssl-dev cmake clang lld opam
+            sudo apt-get install libssl-dev cmake clang lld-12 opam
       - init_opam
       - run:
           name: Set environment variables
