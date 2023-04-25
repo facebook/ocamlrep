@@ -1,0 +1,54 @@
+# @noautodeps
+
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_command_alias")
+load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
+
+oncall("hack")
+
+rust_to_ocaml_args = [
+    "--no-header",
+    "--config",
+    "$(location :config.toml)",
+    "--formatter",
+    "$(location fbsource//tools/third-party/ocamlformat:ocamlformat)",
+]
+
+custom_unittest(
+    name = "rust_to_ocaml",
+    command = [
+        "$(exe :test_rust_to_ocaml)",
+        "$(location fbcode//common/ocaml/interop/rust_to_ocaml/test/cases:cases)",
+        "$(location fbcode//common/ocaml/interop/rust_to_ocaml:rust_to_ocaml)",
+        "--",
+    ] + rust_to_ocaml_args,
+    emails = ["oncall+hack@xmail.facebook.com"],
+    type = "simple",
+)
+
+buck_command_alias(
+    name = "update_snapshots",
+    args = [
+        "./cases",
+        "$(location fbcode//common/ocaml/interop/rust_to_ocaml:rust_to_ocaml)",
+        "--update-snapshots",
+        "--",
+    ] + rust_to_ocaml_args,
+    exe = ":test_rust_to_ocaml",
+)
+
+rust_binary(
+    name = "test_rust_to_ocaml",
+    srcs = ["test_rust_to_ocaml.rs"],
+    rustc_flags = RUST_FLAGS_2018,
+    deps = [
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:clap-3",
+        "fbsource//third-party/rust:similar",
+        "fbsource//third-party/rust:walkdir",
+    ],
+)
+
+export_file(name = "config.toml")

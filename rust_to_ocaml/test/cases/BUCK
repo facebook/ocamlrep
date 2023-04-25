@@ -1,0 +1,8 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("hack")
+
+buck_filegroup(
+    name = "cases",
+    srcs = [".ocamlformat"] + glob(["**/*"]),
+)
