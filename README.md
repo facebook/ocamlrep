@@ -7,7 +7,7 @@ This project is stand-alone and requires or works with:
   - OCaml 4.14.0;
   - A rust nightly toolchain [^1].
 
-[^1] If you plan on using Buck2 for [building ocamlrep](#building-ocamlrep) we recommend `nightly-2023-01-24` at this time.
+[^1]: If you plan on using Buck2 for [building ocamlrep](#building-ocamlrep) we recommend `nightly-2023-01-24` at this time.
 
 ## Building ocamlrep
 
