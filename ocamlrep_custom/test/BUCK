@@ -41,14 +41,14 @@ ocaml_binary(
     deps = [
         ":counter",
     ],
-)
+) if host_info().os.is_macos else None  # issues on linux CircleCI right now
 
 custom_unittest(
     name = "counter_test",
     command = ["$(exe :counter_client)"],
     emails = ["oncall+hack@xmail.facebook.com"],
     type = "simple",
-)
+) if host_info().os.is_macos else None  # issues on linux CircleCI right now
 
 # Now, the "proper" tests.
 
@@ -71,7 +71,7 @@ ocaml_binary(
         "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
         ":test_custom",
     ],
-)
+) if host_info().os.is_macos else None  # issues on linux CircleCI right now
 
 custom_unittest(
     name = "custom",
@@ -79,4 +79,4 @@ custom_unittest(
     emails = ["oncall+hack@xmail.facebook.com"],
     type = "simple",
     deps = [":test_custom_ml"],
-)
+) if host_info().os.is_macos else None  # issues on linux CircleCI right now
