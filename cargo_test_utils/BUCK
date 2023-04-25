@@ -1,0 +1,10 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "cargo_test_utils",
+    srcs = ["cargo_test_utils.rs"],
+    rustc_flags = RUST_FLAGS_2018,
+)

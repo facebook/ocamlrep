@@ -1,0 +1,82 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+# Test the "counter" example from the crate documentation.
+
+oncall("hack")
+
+rust_library(
+    name = "counter",
+    srcs = ["counter.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+            "test": True,  # Say yes to `cargo test`.
+        },
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,  # Tell buck there are no unittests.
+
+    # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
+    # [Note: Test blocks for Cargo] in
+    # `ocamlrep_ocamlpool/test/ocamlpool_test.rs` for details.
+    deps = [
+        "fbcode//common/ocaml/interop/cargo_test_utils:cargo_test_utils",
+        "fbcode//common/ocaml/interop/ocamlrep_custom:ocamlrep_custom",
+        "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:tempdir",
+    ],
+)
+
+ocaml_binary(
+    name = "counter_client",
+    srcs = ["counter_client.ml"],
+    deps = [
+        ":counter",
+    ],
+)
+
+custom_unittest(
+    name = "counter_test",
+    command = ["$(exe :counter_client)"],
+    emails = ["oncall+hack@xmail.facebook.com"],
+    type = "simple",
+)
+
+# Now, the "proper" tests.
+
+rust_library(
+    name = "test_custom",
+    srcs = ["test_custom.rs"],
+    autocargo = {"ignore_rule": True},
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,
+    deps = [
+        "fbcode//common/ocaml/interop/ocamlrep_custom:ocamlrep_custom",
+        "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
+    ],
+)
+
+ocaml_binary(
+    name = "test_custom_ml",
+    srcs = ["test_custom.ml"],
+    deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        ":test_custom",
+    ],
+)
+
+custom_unittest(
+    name = "custom",
+    command = ["$(exe :test_custom_ml)"],
+    emails = ["oncall+hack@xmail.facebook.com"],
+    type = "simple",
+    deps = [":test_custom_ml"],
+)

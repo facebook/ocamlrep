@@ -1,0 +1,53 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "ocamlpool_test",
+    srcs = [
+        "ocamlpool_test.rs",
+    ],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+            "test": True,  # Say yes to `cargo test`.
+        },
+    },
+    crate_root = "ocamlpool_test.rs",
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,  # Don't try to build/run unittests with buck.
+
+    # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
+    # [Note: Test blocks for Cargo] in `ocamlpool_test.rs` for details.
+    deps = [
+        "fbcode//common/ocaml/interop/cargo_test_utils:cargo_test_utils",
+        "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:tempdir",
+    ],
+)
+
+ocaml_binary(
+    name = "ocamlpool_runner",
+    srcs = [
+        "ocamlpool_test.ml",
+    ],
+    deps = [
+        ":ocamlpool_test",
+    ],
+)
+
+custom_unittest(
+    name = "ocamlpool",
+    command = [
+        "$(exe :ocamlpool_runner)",
+    ],
+    type = "simple",
+)

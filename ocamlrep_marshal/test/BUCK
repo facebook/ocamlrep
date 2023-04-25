@@ -1,0 +1,51 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "ocamlrep_marshal_ffi_bindings",
+    srcs = ["ocamlrep_marshal_ffi_bindings.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+            "test": True,  # Say yes to `cargo test`.
+        },
+    },
+    crate_root = "ocamlrep_marshal_ffi_bindings.rs",
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,  # Say no to `buck test`.
+
+    # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
+    # [Note: Test blocks for Cargo] in
+    # `ocamlrep_ocamlpool/test/ocamlpool_test.rs` for details.
+    deps = [
+        "fbcode//common/ocaml/interop/cargo_test_utils:cargo_test_utils",
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        "fbcode//common/ocaml/interop/ocamlrep_marshal:ocamlrep_marshal",
+        "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:tempdir",
+    ],
+)
+
+ocaml_binary(
+    name = "test_runner",
+    srcs = ["test_ocamlrep_marshal.ml"],
+    deps = [
+        ":ocamlrep_marshal_ffi_bindings",
+    ],
+)
+
+custom_unittest(
+    name = "ocamlrep_marshal_test",
+    command = ["$(exe :test_runner)"],
+    emails = ["oncall+hack@xmail.facebook.com"],
+    type = "simple",
+)

@@ -1,0 +1,113 @@
+load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("hack")
+
+rust_library(
+    name = "test_bindings",
+    srcs = ["test_bindings.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+            "test": True,  # Say yes to `cargo test`.
+        },
+        "cargo_toml_dir": "test_bindings",
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    unittests = False,  # Don't try to build/run unittests with buck.
+
+    # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
+    # [Note: Test blocks for Cargo] in
+    # `ocamlrep_ocamlpool/test/ocamlpool_test.rs` for details.
+    deps = [
+        "fbcode//common/ocaml/interop/cargo_test_utils:cargo_test_utils",
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        "fbcode//common/ocaml/interop/ocamlrep_caml_builtins:ocamlrep_caml_builtins",
+        "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:tempdir",
+    ],
+)
+
+ocaml_binary(
+    name = "test_ocamlrep",
+    srcs = ["test_ocamlrep.ml"],
+    deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        ":test_bindings",
+    ],
+)
+
+custom_unittest(
+    name = "ocamlrep",
+    command = ["$(exe :test_ocamlrep)"],
+    emails = ["oncall+hack@xmail.facebook.com"],
+    type = "simple",
+)
+
+rust_library(
+    name = "test_from_ocamlrep",
+    srcs = ["test_from_ocamlrep.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+        },
+        "cargo_toml_dir": "test_from_ocamlrep",
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    test_deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+    ],
+    unittests = True,
+)
+
+rust_library(
+    name = "test_add_root",
+    srcs = ["test_add_root.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+        },
+        "cargo_toml_dir": "test_add_root",
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    test_deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+    ],
+    unittests = True,
+)
+
+rust_library(
+    name = "test_from_ocamlrep_in",
+    srcs = ["test_from_ocamlrep_in.rs"],
+    autocargo = {
+        "cargo_target_config": {
+            "crate_type": [
+                "lib",
+                "staticlib",
+            ],
+            "doctest": False,
+        },
+        "cargo_toml_dir": "test_from_ocamlrep_in",
+    },
+    rustc_flags = RUST_FLAGS_2018,
+    test_deps = [
+        "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
+        "fbsource//third-party/rust:bumpalo",
+    ],
+    unittests = True,
+)
