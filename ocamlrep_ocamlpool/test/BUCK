@@ -42,7 +42,7 @@ ocaml_binary(
     deps = [
         ":ocamlpool_test",
     ],
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)
 
 custom_unittest(
     name = "ocamlpool",
@@ -50,4 +50,4 @@ custom_unittest(
         "$(exe :ocamlpool_runner)",
     ],
     type = "simple",
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)

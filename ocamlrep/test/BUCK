@@ -42,14 +42,14 @@ ocaml_binary(
         "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
         ":test_bindings",
     ],
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)
 
 custom_unittest(
     name = "ocamlrep",
     command = ["$(exe :test_ocamlrep)"],
     emails = ["oncall+hack@xmail.facebook.com"],
     type = "simple",
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)
 
 rust_library(
     name = "test_from_ocamlrep",

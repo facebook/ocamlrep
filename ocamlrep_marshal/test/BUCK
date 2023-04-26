@@ -41,11 +41,11 @@ ocaml_binary(
     deps = [
         ":ocamlrep_marshal_ffi_bindings",
     ],
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)
 
 custom_unittest(
     name = "ocamlrep_marshal_test",
     command = ["$(exe :test_runner)"],
     emails = ["oncall+hack@xmail.facebook.com"],
     type = "simple",
-) if host_info().os.is_macos else None  # issues on linux CircleCI right now
+)
