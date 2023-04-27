@@ -36,7 +36,7 @@ commands:
           name: Aptitude install
           command: |
             sudo apt-get update
-            sudo apt-get install libssl-dev cmake clang lld opam
+            sudo apt-get install libssl-dev cmake clang lld opam zstd
       - init_opam
       - run:
           name: Set environment variables
@@ -55,7 +55,7 @@ commands:
             # Avoid `brew link` step errors
             rm -f '/usr/local/lib/python3.9/site-packages/six.py'
             brew unlink python@3.9
-            brew install cmake coreutils opam llvm
+            brew install cmake coreutils opam llvm zstd wget
       - init_opam
       - run:
           name: Set environment variables
@@ -75,12 +75,19 @@ commands:
             cargo test
 
   install_buck:
-    description: Use cargo to install buck
+    description: Download latest buck2
+    parameters:
+      triple:
+        type: string
     steps:
       - run:
           name: Install buck
           command: |
-            cargo +nightly-2023-03-07 install --git https://github.com/facebook/buck2.git buck2 --force
+            wget https://github.com/facebook/buck2/releases/download/latest/buck2-<<parameters.triple>>.zst
+            zstd -d buck2-<<parameters.triple>>.zst -o buck2
+            chmod +x buck2
+            sudo ln -s $(pwd)/buck2 /usr/local/bin/buck2
+
 
   install_reindeer:
     description: Use cargo to install reindeer
@@ -150,7 +157,8 @@ jobs:
     steps:
       - checkout
       - setup_linux_env
-      - install_buck
+      - install_buck:
+          triple: "x86_64-unknown-linux-gnu"
       - install_reindeer
       - reindeer
       - buck_tp
@@ -165,7 +173,8 @@ jobs:
     steps:
       - checkout
       - setup_macos_env
-      - install_buck
+      - install_buck:
+          triple: "x86_64-apple-darwin"
       - install_reindeer
       - reindeer
       - buck_tp
