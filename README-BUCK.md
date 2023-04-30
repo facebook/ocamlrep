@@ -9,7 +9,7 @@ These are things that need to be done once to get going.
 These commands install the `buck2` and `reindeer` binaries into '~/.cargo/bin'.
 ```bash
     cargo install --git https://github.com/facebook/buck2.git buck2
-    cargo install --git https://github.com/facebookincubator/reindeer.git reindeer
+    cargo install --git https://github.com/facebookincubator/reindeer.git --rev c78947234f5b61d5b8e56831c75790bb326a28c9 reindeer
 ```
 
 *Note: Make sure after installing them to configure your `PATH` environment variable so they can be found.*
