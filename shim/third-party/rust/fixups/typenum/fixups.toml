@@ -1,7 +1,7 @@
+# See https://github.com/paholg/typenum/pull/147. Typenum does something silly
+# with `include!` by default and added this feature for Bazel because Bazel
+# couldn't deal with the silly thing either.
+features = ["force_unix_path_separator"]
+
 [[buildscript]]
 [buildscript.gen_srcs]
-files = ["consts.rs", "op.rs"]
-
-[env]
-TYPENUM_BUILD_CONSTS = "consts.rs"
-TYPENUM_BUILD_OP = "op.rs"
