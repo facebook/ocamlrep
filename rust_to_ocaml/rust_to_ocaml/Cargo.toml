@@ -23,4 +23,4 @@ indexmap = { version = "1.9.2", features = ["arbitrary", "rayon", "serde-1"] }
 serde = { version = "1.0.136", features = ["derive", "rc"] }
 signed_source = { path = "../../signed_source" }
 syn = { version = "1.0.102", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-toml = "=0.5.8"
+toml = "0.7.3"
