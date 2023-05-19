@@ -16,7 +16,7 @@ test = false
 [dependencies]
 anyhow = "1.0.65"
 attr_parser = { path = "../attr_parser" }
-clap = { version = "3.2.23", features = ["derive", "env", "regex", "unicode", "wrap_help"] }
+clap = { version = "3.2.25", features = ["derive", "env", "regex", "unicode", "wrap_help"] }
 convert_case = "0.4.0"
 derive_more = "0.99.17"
 indexmap = { version = "1.9.2", features = ["arbitrary", "rayon", "serde-1"] }
