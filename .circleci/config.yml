@@ -95,7 +95,7 @@ commands:
       - run:
           name: Install reindeer
           command: |
-            cargo +nightly-2023-03-07 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
+            cargo +nightly-2023-04-23 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
 
   reindeer:
     description: Use reindeer to vendor & buckify rust 3rd-party deps
