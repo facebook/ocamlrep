@@ -17,4 +17,5 @@ crate-type = ["lib", "staticlib"]
 anyhow = "1.0.65"
 cargo_test_utils = { path = "../../cargo_test_utils" }
 ocamlrep_ocamlpool = { path = ".." }
+once_cell = "1.12"
 tempdir = "0.3"

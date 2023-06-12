@@ -22,6 +22,9 @@ extern "C" {
     fn caml_failwith(msg: *const i8);
     fn caml_initialize(addr: *mut usize, value: usize);
     static ocamlpool_generation: usize;
+
+    pub fn caml_named_value(name: *const std::ffi::c_char) -> *mut usize;
+    pub fn caml_callbackN_exn(closure: usize, n: std::ffi::c_int, args: *const usize) -> usize;
 }
 
 pub struct Pool {
@@ -179,6 +182,13 @@ pub unsafe fn add_to_ambient_pool<T: ToOcamlRep>(value: &T) -> usize {
     let result = value.to_ocamlrep(&fake_pool).to_bits();
     std::mem::forget(fake_pool);
     result
+}
+
+/// Check if an OCaml value is an exception.
+///
+/// For internal purposes.
+pub fn is_exception_result(v: usize) -> bool {
+    v & 3 == 2
 }
 
 #[macro_export]
@@ -374,5 +384,79 @@ macro_rules! ocaml_ffi_arena_result {
         $($crate::ocaml_ffi_arena_result_fn! {
             fn $name<$lifetime>($($param: $ty),*) $(-> $ret)* $code
         })*
+    };
+}
+
+#[macro_export]
+macro_rules! ocaml_registered_function_fn {
+    // This needs to be first, as macro matching is linear.
+    //
+    // caml_callback_exn works as it directly calls into the implemented OCaml functions.
+    //
+    // caml_callback{2,3,N}_exn don't work, as they go through caml_apply2,
+    // caml_apply3 etc. which for some reason crashes!
+    //
+    // TODO: FIgure out how to make caml_apply2 and friends not crash, and remove the below rule.
+    ($ocaml_name:expr, fn $name:ident($param1:ident: $ty1:ty, $($params:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
+        compile_error!("We don't support functions with more than one parameter.");
+    };
+
+    ($ocaml_name:expr, fn $name:ident($($param:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
+        #[no_mangle]
+        pub unsafe fn $name ($($param: $ty,)*) -> $ret {
+            static FN: once_cell::sync::OnceCell<usize> = once_cell::sync::OnceCell::new();
+            let the_function_to_call = *FN.get_or_init(|| {
+                let the_function_to_call_name = std::ffi::CString::new($ocaml_name).expect("string contained null byte");
+                let the_function_to_call = $crate::caml_named_value(the_function_to_call_name.as_ptr());
+                if the_function_to_call.is_null() {
+                    panic!("Could not find function. Use Callback.register");
+                }
+                *the_function_to_call
+            });
+            let args_to_function: Vec<usize> = vec![$($crate::to_ocaml(&$param),)*];
+            let args_to_function_ptr: *const usize = args_to_function.as_ptr();
+            let result = $crate::caml_callbackN_exn(the_function_to_call, args_to_function.len().try_into().unwrap(), args_to_function_ptr);
+            if $crate::is_exception_result(result) {
+                panic!("OCaml function threw an unknown exception");
+            }
+            let result = <$ret>::from_ocaml(result).unwrap();
+            result
+        }
+    };
+
+    ($ocaml_name:expr, fn $name:ident() -> $ret:ty) => {
+        unsafe fn $name() -> $ret {
+            $crate::ocaml_registered_function_fn!(
+                $ocaml_name,
+                fn inner(_unit: ()) -> $ret
+            );
+            inner(())
+        }
+    };
+
+    ($ocaml_name:expr, fn $name:ident($($param:ident: $ty:ty),*  $(,)?)) => {
+        $crate::ocaml_registered_function_fn!(
+            $ocaml_name,
+            fn $name($($param: $ty),*) -> ()
+        );
+    };
+}
+
+/// Convenience macro for declaring Rust FFI wrappers around OCaml-defined functions.
+///
+/// Each parameter will be converted to OCaml using `ocamlrep` and allocated on
+/// the OCaml GC heap using `ocamlpool`. The result will be converted from OCaml
+/// using `ocamlrep`.
+///
+/// Exceptions in OCaml will be caught and converted to a Rust panic. The panic
+/// will not contain useful information due to the limitations of deserializing
+/// arbitrary OCaml exceptions.
+#[macro_export]
+macro_rules! ocaml_registered_function {
+    ($(fn $name:ident($($param:ident: $ty:ty),*  $(,)?) $(-> $ret:ty)?;)*) => {
+        $($crate::ocaml_registered_function_fn!(
+            stringify!($name),
+            fn $name($($param: $ty),*) $(-> $ret)*
+        );)*
     };
 }
