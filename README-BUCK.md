@@ -9,7 +9,7 @@ These are things that need to be done once to get going.
 These commands install the `buck2` and `reindeer` binaries into '~/.cargo/bin'.
 ```bash
     cargo install --git https://github.com/facebook/buck2.git buck2
-    cargo install --git https://github.com/facebookincubator/reindeer.git reindeer
+    cargo install --locked --git https://github.com/facebookincubator/reindeer.git reindeer
 ```
 
 *Note: Make sure after installing them to configure your `PATH` environment variable so they can be found.*
@@ -26,7 +26,6 @@ When opam has been installed execute `~/.ocaml-setup.sh` from the root of the di
 
 [Reindeer](https://github.com/facebookincubator/reindeer) is a a tool that imports Rust crates from crates.io and generates Buck2 build rules for them. Run it from the root of the ocamlrep repository like this.
 ```bash
-    reindeer --third-party-dir shim/third-party/rust vendor && \
     reindeer --third-party-dir shim/third-party/rust buckify
 ```
 
