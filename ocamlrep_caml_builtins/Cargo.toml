@@ -16,3 +16,4 @@ doctest = false
 [dependencies]
 ocamlrep = { path = "../ocamlrep" }
 ocamlrep_custom = { path = "../ocamlrep_custom" }
+serde = { version = "1.0.136", features = ["derive", "rc"] }

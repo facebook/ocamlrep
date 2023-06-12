@@ -19,5 +19,6 @@ rust_library(
     deps = [
         "fbcode//common/ocaml/interop/ocamlrep:ocamlrep",
         "fbcode//common/ocaml/interop/ocamlrep_custom:ocamlrep_custom",
+        "fbsource//third-party/rust:serde",
     ],
 )
