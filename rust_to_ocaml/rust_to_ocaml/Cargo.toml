@@ -10,7 +10,7 @@ license = "MIT"
 
 [[bin]]
 name = "rust_to_ocaml"
-path = "../src/rust_to_ocaml.rs"
+path = "rust_to_ocaml.rs"
 test = false
 
 [dependencies]
