@@ -17,7 +17,7 @@ commands:
       - run:
           name: Init opam
           command: |
-            opam init --compiler=4.14.0 --disable-sandboxing -y
+            opam init --compiler=4.14.1 --disable-sandboxing -y
 
   setup_ocaml_tp:
     description: Write symlinks shim/third-party/ocaml
