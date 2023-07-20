@@ -1,2 +1,5 @@
-[[buildscript]]
-[buildscript.rustc_flags]
+# To set `CARGO_MANIFEST_DIR`
+cargo_env = true
+
+[platform_fixup.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))']
+extra_srcs = ["serde_derive-x86_64-unknown-linux-gnu"]
