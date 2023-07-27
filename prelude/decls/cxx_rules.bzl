@@ -117,15 +117,14 @@ cxx_binary = prelude_rule(
             "link_group": attrs.option(attrs.string(), default = None),
             "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "post_linker_flags": attrs.list(attrs.arg(), default = []),
-            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "prefer_stripped_objects": attrs.bool(default = False),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "resources": attrs.named_set(attrs.source(), sorted = True, default = []),
             "thin_lto": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -375,7 +374,6 @@ cxx_genrule = prelude_rule(
             "need_android_tools": attrs.bool(default = False),
             "outs": attrs.option(attrs.dict(key = attrs.string(), value = attrs.set(attrs.string(), sorted = False), sorted = False), default = None),
             "remote": attrs.option(attrs.bool(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -571,8 +569,8 @@ cxx_library = prelude_rule(
             "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
             "module_name": attrs.option(attrs.string(), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "post_linker_flags": attrs.list(attrs.arg(), default = []),
-            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "resources": attrs.named_set(attrs.source(), sorted = True, default = []),
             "sdk_modules": attrs.list(attrs.string(), default = []),
@@ -584,7 +582,6 @@ cxx_library = prelude_rule(
             "uses_explicit_modules": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "xcode_private_headers_symlinks": attrs.option(attrs.bool(), default = None),
             "xcode_public_headers_symlinks": attrs.option(attrs.bool(), default = None),
         }
@@ -725,7 +722,6 @@ cxx_precompiled_header = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -837,18 +833,17 @@ cxx_test = prelude_rule(
             "platform_compiler_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_headers": attrs.list(attrs.tuple(attrs.regex(), attrs.named_set(attrs.source(), sorted = True)), default = []),
-            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preprocessor_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "platform_srcs": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.one_of(attrs.source(), attrs.tuple(attrs.source(), attrs.list(attrs.arg()))), sorted = True)), default = []),
-            "post_linker_flags": attrs.list(attrs.arg(), default = []),
-            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "prefer_stripped_objects": attrs.bool(default = False),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "thin_lto": attrs.bool(default = False),
             "use_default_test_main": attrs.option(attrs.bool(), default = None),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -908,7 +903,7 @@ cxx_toolchain = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_path_normalization_args_enabled": attrs.bool(default = False),
             "linker": attrs.source(),
-            "linker_flags": attrs.list(attrs.arg(), default = []),
+            "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "linker_type": attrs.enum(LinkerProviderType),
             "nm": attrs.source(),
             "objcopy_for_shared_library_interface": attrs.source(),
@@ -934,7 +929,6 @@ cxx_toolchain = prelude_rule(
             "strip_non_global_flags": attrs.option(attrs.list(attrs.arg()), default = None),
             "use_arg_file": attrs.bool(default = False),
             "use_header_map": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1069,9 +1063,9 @@ prebuilt_cxx_library = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "exported_lang_platform_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False, default = {}),
             "exported_lang_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False, default = {}),
-            "exported_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
-            "exported_post_linker_flags": attrs.list(attrs.arg(), default = []),
-            "exported_post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "exported_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
+            "exported_post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+            "exported_post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "frameworks": attrs.list(attrs.string(), default = []),
             "import_lib": attrs.option(attrs.source(), default = None),
             "include_in_android_merge_map_output": attrs.bool(default = False),
@@ -1094,7 +1088,6 @@ prebuilt_cxx_library = prelude_rule(
             "versioned_soname": attrs.option(attrs.versioned(attrs.string()), default = None),
             "versioned_static_lib": attrs.option(attrs.versioned(attrs.source()), default = None),
             "versioned_static_pic_lib": attrs.option(attrs.versioned(attrs.source()), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1202,7 +1195,36 @@ prebuilt_cxx_library_group = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
+        }
+    ),
+)
+
+llvm_link_bitcode = prelude_rule(
+    name = "llvm_link_bitcode",
+    docs = """
+        A llvm\\_link\\_bitcode() rule builds a LLVM bitcode object from a given set LLVM bitcode inputs.
+    """,
+    examples = """
+        ```
+
+        # A rule that builds and runs C/C++ test using gtest.
+        llvm_link_bitcode(
+          name = 'echo_test',
+          srcs = [
+            'echo_test.o',  // Where this is a LLVM bitcode object.
+            'echo_other.o', // And this is another LLVM bitcode object.
+          ],
+        )
+
+        ```
+    """,
+    further = None,
+    attrs = (
+        # @unsorted-dict-items
+        cxx_common.srcs_arg() |
+        buck.deps_query_arg() |
+        {
+            "deps": attrs.list(attrs.dep(), default = []),
         }
     ),
 )
@@ -1216,4 +1238,5 @@ cxx_rules = struct(
     cxx_toolchain = cxx_toolchain,
     prebuilt_cxx_library = prebuilt_cxx_library,
     prebuilt_cxx_library_group = prebuilt_cxx_library_group,
+    llvm_link_bitcode = llvm_link_bitcode,
 )

@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//http_archive/exec_deps.bzl", "HttpArchiveExecDeps")
 load(":common.bzl", "OnDuplicateEntry", "buck", "prelude_rule", "validate_uri")
 load(":genrule_common.bzl", "genrule_common")
 load(":remote_common.bzl", "remote_common")
@@ -33,7 +34,6 @@ alias = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -199,9 +199,7 @@ command_alias = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "resources": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
-            "_find_and_replace_bat": attrs.default_only(attrs.exec_dep(default = "prelude//tools:find_and_replace.bat")),
             "_target_os_type": buck.target_os_type_arg(),
         }
     ),
@@ -217,7 +215,6 @@ config_setting = prelude_rule(
         {
             "constraint_values": attrs.list(attrs.configuration_label(), default = []),
             "values": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -250,7 +247,6 @@ configured_alias = prelude_rule(
             # If `configured_actual` is `None`, fallback to this unconfigured dep.
             "platform": attrs.option(attrs.configuration_label(), default = None),
             "propagate_flavors": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -261,9 +257,7 @@ constraint_setting = prelude_rule(
     examples = None,
     further = None,
     attrs = (
-        # @unsorted-dict-items
         {
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -277,7 +271,6 @@ constraint_value = prelude_rule(
         # @unsorted-dict-items
         {
             "constraint_setting": attrs.configuration_label(),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -395,7 +388,6 @@ export_file = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -413,7 +405,6 @@ external_test_runner = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -462,7 +453,6 @@ filegroup = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -651,6 +641,7 @@ genrule = prelude_rule(
                 ```
                 is not.
             """),
+            "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
         } |
         genrule_common.environment_expansion_separator() |
         {
@@ -675,7 +666,7 @@ genrule = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "need_android_tools": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
+            "_exec_os_type": buck.exec_os_type_arg(),
         }
     ),
 )
@@ -709,6 +700,7 @@ http_archive = prelude_rule(
           name = 'thrift-compiler-bin',
           out = 'thrift',
           cmd = 'cp $(location :thrift-archive)/bin/thrift $OUT',
+          executable = True,
         )
 
         genrule(
@@ -756,12 +748,26 @@ http_archive = prelude_rule(
                  Supported values are: `zip`, `tar`, `tar.gz`,
                  `tar.bz2`, `tar.xz`, and `tar.zst`.
             """),
+            "sub_targets": attrs.list(attrs.string(), default = [], doc = """
+                A list of filepaths within the archive to be made accessible as sub-targets.
+                For example if we have an http_archive with `name = "archive"` and
+                `sub_targets = ["src/lib.rs"]`, then other targets would be able to refer
+                to that file as `":archive[src/lib.rs]"`.
+            """),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha1": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
+            "exec_deps": attrs.exec_dep(providers = [HttpArchiveExecDeps], default = "prelude//http_archive/tools:exec_deps", doc = """
+                When using http_archive as an anon target, the rule invoking the
+                anon target needs to mirror this attribute into its own
+                attributes, and forward the provider into the anon target
+                invocation.
+
+                When using http_archive normally not as an anon target, the
+                default value is always fine.
+            """),
         }
     ),
 )
@@ -820,6 +826,7 @@ http_file = prelude_rule(
           name = 'thrift-compiler-bin',
           url = 'https://internal-mirror.example.com/bin/thrift-compiler',
           sha256 = 'c24932ccabb66fffb2d7122298f7f1f91e0b1f14e05168e3036333f84bdf58dc',
+          executable = True,
         )
 
         ```
@@ -859,7 +866,6 @@ http_file = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha1": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -874,7 +880,6 @@ platform = prelude_rule(
         {
             "constraint_values": attrs.list(attrs.configuration_label(), default = []),
             "deps": attrs.list(attrs.configuration_label(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -961,6 +966,10 @@ remote_file = prelude_rule(
                  specify a `mvn` URL, it will be decoded as described in the
                  javadocs for MavenUrlDecoder See the example section below.
             """),
+            "vpnless_url": attrs.option(attrs.string(), default = None, doc = """
+                An optional additional URL from which this resource can be downloaded when
+                  off VPN. Meta-internal only.
+            """),
             "sha1": attrs.string(default = "", doc = """
                 The [`SHA-1`](//wikipedia.org/wiki/SHA-1) hash of the downloaded artifact.
                  Buck verifies this is correct and fails the fetch command if it doesn't match in order to
@@ -988,7 +997,6 @@ remote_file = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha256": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1075,11 +1083,15 @@ test_suite = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
+            # On buck1 query, tests attribute on test_suite is treated as deps, while on buck2 it is not.
+            # While buck2's behavior makes more sense, we want to preserve buck1 behavior on test_suite for now to make TD behavior match between buck1 and buck2.
+            # This diff makes the behaviors match by adding a test_deps attribute to test_suite on buck2 that is used as a deps attribute. In the macro layer, we set test_deps = tests if we are using buck2.
+            # For more context: https://fb.prod.workplace.com/groups/603286664133355/posts/682567096205311/?comment_id=682623719532982&reply_comment_id=682650609530293
+            "test_deps": attrs.list(attrs.dep(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1097,7 +1109,6 @@ versioned_alias = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "versions": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1317,7 +1328,7 @@ worker_tool = prelude_rule(
                  an executable, such as an `sh\\_binary()`.
                  Buck runs this executable only once per build.
             """),
-            "args": attrs.one_of(attrs.arg(), attrs.list(attrs.arg()), doc = """
+            "args": attrs.one_of(attrs.arg(), attrs.list(attrs.arg()), default = [], doc = """
                 A string of args that is passed to the executable represented by `exe` on
                  initial startup.
             """),
@@ -1345,7 +1356,8 @@ worker_tool = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
+            # FIXME: prelude// should be standalone (not refer to fbsource//)
+            "_worker_tool_runner": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/tools/worker:worker_tool_runner")),
         }
     ),
 )
@@ -1451,7 +1463,6 @@ zip_file = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )

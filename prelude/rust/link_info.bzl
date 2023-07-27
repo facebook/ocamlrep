@@ -7,7 +7,6 @@
 
 # Implementation of the Rust build rules.
 
-load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkStyle",
@@ -18,8 +17,6 @@ load(
     "@prelude//linking:shared_libraries.bzl",
     "SharedLibraryInfo",
 )
-load("@prelude//utils:platform_flavors_util.bzl", "by_platform")
-load("@prelude//utils:utils.bzl", "flatten")
 
 # Link style for targets which do not set an explicit `link_style` attribute.
 DEFAULT_STATIC_LINK_STYLE = LinkStyle("static_pic")
@@ -47,7 +44,7 @@ RustLinkInfo = provider(fields = [
 ])
 
 CrateName = record(
-    simple = field(str.type),
+    simple = field(str),
     dynamic = field(["artifact", None]),
 )
 
@@ -63,6 +60,8 @@ RustLinkStyleInfo = record(
     rmeta = field("artifact"),
     # Transitive rmeta deps
     transitive_rmeta_deps = field({"artifact": CrateName.type}),
+    # Path to PDB file with Windows debug data.
+    pdb = field(["artifact", None]),
 )
 
 def style_info(info: RustLinkInfo.type, link_style: LinkStyle.type) -> RustLinkStyleInfo.type:
@@ -71,55 +70,42 @@ def style_info(info: RustLinkInfo.type, link_style: LinkStyle.type) -> RustLinkS
 
     return info.styles[link_style]
 
-def cxx_by_platform(ctx: "context", xs: [(str.type, "_a")]) -> "_a":
-    platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo].name
-    return flatten(by_platform([platform], xs))
-
 # A Rust dependency
 RustDependency = record(
     # The actual dependency
-    dep = field("dependency"),
+    dep = field(Dependency),
     # The local name, if any (for `named_deps`)
-    name = field([None, str.type]),
+    name = field([None, str]),
     # Any flags for the dependency (`flagged_deps`), which are passed on to rustc.
-    flags = field([str.type]),
+    flags = field([str]),
 )
 
-# Returns all first-order dependencies, resolving the ones from "platform_deps"
+# Returns all first-order dependencies.
 def _do_resolve_deps(
-        ctx: "context",
-        deps: ["dependency"],
-        platform_deps: [(str.type, ["dependency"])],
-        named_deps: {str.type: "dependency"},
-        flagged_deps: [("dependency", [str.type])] = [],
-        platform_flagged_deps: [(str.type, [("dependency", [str.type])])] = []) -> [RustDependency.type]:
+        deps: list[Dependency],
+        named_deps: dict[str, Dependency],
+        flagged_deps: list[(Dependency, list[str])] = []) -> list[RustDependency.type]:
     return [
         RustDependency(name = name, dep = dep, flags = flags)
-        for name, dep, flags in [(None, dep, []) for dep in deps + cxx_by_platform(ctx, platform_deps)] +
+        for name, dep, flags in [(None, dep, []) for dep in deps] +
                                 [(name, dep, []) for name, dep in named_deps.items()] +
-                                [(None, dep, flags) for dep, flags in flagged_deps +
-                                                                      cxx_by_platform(ctx, platform_flagged_deps)]
+                                [(None, dep, flags) for dep, flags in flagged_deps]
     ]
 
 def resolve_deps(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> [RustDependency.type]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list[RustDependency.type]:
     # The `getattr`s are needed for when we're operating on
     # `prebuilt_rust_library` rules, which don't have those attrs.
     dependencies = _do_resolve_deps(
-        ctx = ctx,
         deps = ctx.attrs.deps,
-        platform_deps = ctx.attrs.platform_deps,
         named_deps = getattr(ctx.attrs, "named_deps", {}),
         flagged_deps = getattr(ctx.attrs, "flagged_deps", []),
-        platform_flagged_deps = getattr(ctx.attrs, "platform_flagged_deps", []),
     )
 
     if include_doc_deps:
         dependencies.extend(_do_resolve_deps(
-            ctx = ctx,
             deps = ctx.attrs.doc_deps,
-            platform_deps = ctx.attrs.doc_platform_deps,
             named_deps = getattr(ctx.attrs, "doc_named_deps", {}),
         ))
 
@@ -127,8 +113,8 @@ def resolve_deps(
 
 # Returns native link dependencies.
 def _non_rust_link_deps(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> ["dependency"]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list[Dependency]:
     """
     Return all first-order native linkable dependencies of all transitive Rust
     libraries.
@@ -145,8 +131,8 @@ def _non_rust_link_deps(
 
 # Returns native link dependencies.
 def _non_rust_link_infos(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> ["MergedLinkInfo"]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list["MergedLinkInfo"]:
     """
     Return all first-order native link infos of all transitive Rust libraries.
 
@@ -159,8 +145,8 @@ def _non_rust_link_infos(
 
 # Returns native link dependencies.
 def _non_rust_shared_lib_infos(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> ["SharedLibraryInfo"]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list["SharedLibraryInfo"]:
     """
     Return all transitive shared libraries for non-Rust native linkabes.
 
@@ -176,15 +162,15 @@ def _non_rust_shared_lib_infos(
 
 # Returns native link dependencies.
 def _rust_link_infos(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> ["RustLinkInfo"]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list["RustLinkInfo"]:
     first_order_deps = resolve_deps(ctx, include_doc_deps)
     return filter(None, [d.dep.get(RustLinkInfo) for d in first_order_deps])
 
-def normalize_crate(label: str.type) -> str.type:
+def normalize_crate(label: str) -> str:
     return label.replace("-", "_")
 
-def inherited_non_rust_exported_link_deps(ctx: "context") -> ["dependency"]:
+def inherited_non_rust_exported_link_deps(ctx: AnalysisContext) -> list[Dependency]:
     deps = {}
     for dep in _non_rust_link_deps(ctx):
         deps[dep.label] = dep
@@ -194,22 +180,22 @@ def inherited_non_rust_exported_link_deps(ctx: "context") -> ["dependency"]:
     return deps.values()
 
 def inherited_non_rust_link_info(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> "MergedLinkInfo":
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> "MergedLinkInfo":
     infos = []
     infos.extend(_non_rust_link_infos(ctx, include_doc_deps))
     infos.extend([d.non_rust_link_info for d in _rust_link_infos(ctx, include_doc_deps)])
     return merge_link_infos(ctx, infos)
 
 def inherited_non_rust_shared_libs(
-        ctx: "context",
-        include_doc_deps: bool.type = False) -> ["SharedLibraryInfo"]:
+        ctx: AnalysisContext,
+        include_doc_deps: bool = False) -> list["SharedLibraryInfo"]:
     infos = []
     infos.extend(_non_rust_shared_lib_infos(ctx, include_doc_deps))
     infos.extend([d.non_rust_shared_libs for d in _rust_link_infos(ctx, include_doc_deps)])
     return infos
 
-def attr_simple_crate_for_filenames(ctx: "context") -> str.type:
+def attr_simple_crate_for_filenames(ctx: AnalysisContext) -> str:
     """
     A "good enough" identifier to use in filenames. Buck wants to have filenames
     of artifacts figured out before we begin building them. Normally we want a
@@ -231,7 +217,7 @@ def attr_simple_crate_for_filenames(ctx: "context") -> str.type:
     """
     return normalize_crate(ctx.attrs.crate or ctx.label.name)
 
-def attr_crate(ctx: "context") -> CrateName.type:
+def attr_crate(ctx: AnalysisContext) -> CrateName.type:
     """
     The true user-facing name of the crate, which may only be known at build
     time, not during analysis.

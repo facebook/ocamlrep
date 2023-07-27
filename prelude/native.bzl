@@ -15,12 +15,15 @@ load("@prelude//android:cpu_filters.bzl", "ALL_CPU_FILTERS", "CPU_FILTER_FOR_DEF
 load("@prelude//apple:apple_bundle_macro_layer.bzl", "apple_bundle_macro_impl")
 load("@prelude//apple:apple_macro_layer.bzl", "apple_binary_macro_impl", "apple_library_macro_impl", "apple_package_macro_impl")
 load("@prelude//apple:apple_test_macro_layer.bzl", "apple_test_macro_impl")
+load("@prelude//apple/swift:swift_toolchain_macro_layer.bzl", "swift_toolchain_macro_impl")
 load("@prelude//cxx:cxx_toolchain.bzl", "cxx_toolchain_inheriting_target_platform")
+load("@prelude//cxx:cxx_toolchain_macro_layer.bzl", "cxx_toolchain_macro_impl")
 load("@prelude//cxx:cxx_toolchain_types.bzl", _cxx = "cxx")
 load("@prelude//erlang:erlang.bzl", _erlang_application = "erlang_application", _erlang_tests = "erlang_tests")
 load("@prelude//python:toolchain.bzl", _python = "python")
 load("@prelude//user:all.bzl", _user_rules = "rules")
 load("@prelude//utils:utils.bzl", "expect")
+load(":open_source.bzl", "is_open_source")
 load(":paths.bzl", "paths")
 load(":rules.bzl", __rules__ = "rules")
 
@@ -98,7 +101,7 @@ def _versioned_param_to_select(items, default = None):
         return None
 
     # TODO(agallagher): Remove once we move to a `uquery` based TD.
-    if read_config("fbcode", "cquery_td") == "true":
+    if read_root_config("fbcode", "cquery_td") == "true":
         return None
 
     # Special case a form of "empty" constraints that `buckify_tp2` may
@@ -140,7 +143,7 @@ def _concat(*items):
             new_res.update(item)
             res = new_res
         else:
-            res += item
+            res += item  # buildifier: disable=dict-concatenation
 
     return res
 
@@ -160,11 +163,11 @@ def _at_most_one(*items):
 
     return res
 
-def _get_valid_cpu_filters(cpu_filters: [[str.type], None]) -> [str.type]:
-    if read_config("buck2", "android_force_single_default_cpu") in ("True", "true"):
+def _get_valid_cpu_filters(cpu_filters: [list[str], None]) -> list[str]:
+    if read_root_config("buck2", "android_force_single_default_cpu") in ("True", "true"):
         return [CPU_FILTER_FOR_DEFAULT_PLATFORM]
 
-    cpu_abis_config_string = read_config("ndk", "cpu_abis")
+    cpu_abis_config_string = read_root_config("ndk", "cpu_abis")
     if cpu_abis_config_string:
         cpu_abis = [v.strip() for v in cpu_abis_config_string.split(",")]
         for cpu_abi in cpu_abis:
@@ -301,6 +304,7 @@ def _apple_watchos_bundle_macro_stub(**kwargs):
 def _apple_test_macro_stub(**kwargs):
     apple_test_macro_impl(
         apple_test_rule = __rules__["apple_test"],
+        apple_resource_bundle_rule = _user_rules["apple_resource_bundle"],
         **kwargs
     )
 
@@ -322,17 +326,40 @@ def _apple_package_macro_stub(**kwargs):
         **kwargs
     )
 
+def _swift_toolchain_macro_stub(**kwargs):
+    rule = __rules__["swift_toolchain"]
+
+    swift_toolchain_macro_impl(
+        swift_toolchain_rule = rule,
+        **kwargs
+    )
+
 def _cxx_toolchain_macro_stub(inherit_target_platform = False, **kwargs):
     if inherit_target_platform:
-        cxx_toolchain_inheriting_target_platform(**kwargs)
+        rule = cxx_toolchain_inheriting_target_platform
+        if not is_open_source():
+            cache_links = kwargs.get("cache_links")
+            kwargs["cache_links"] = select({
+                "DEFAULT": cache_links,
+                "ovr_config//build_mode:fbcode-build-info-mode-full": False,
+                "ovr_config//build_mode:fbcode-build-info-mode-stable": True,
+            })
     else:
-        __rules__["cxx_toolchain"](**kwargs)
+        rule = __rules__["cxx_toolchain"]
+    cxx_toolchain_macro_impl(
+        cxx_toolchain_rule = rule,
+        **kwargs
+    )
 
 def _cxx_toolchain_override_macro_stub(inherit_target_platform = False, **kwargs):
     if inherit_target_platform:
-        _user_rules["cxx_toolchain_override_inheriting_target_platform"](**kwargs)
+        rule = _user_rules["cxx_toolchain_override_inheriting_target_platform"]
     else:
-        _user_rules["cxx_toolchain_override"](**kwargs)
+        rule = _user_rules["cxx_toolchain_override"]
+    cxx_toolchain_macro_impl(
+        cxx_toolchain_rule = rule,
+        **kwargs
+    )
 
 def _erlang_application_macro_stub(**kwargs):
     _erlang_application(
@@ -368,6 +395,7 @@ __extra_rules__ = {
     "export_file": _export_file_macro_stub,
     "prebuilt_cxx_library": _prebuilt_cxx_library_macro_stub,
     "python_library": _python_library_macro_stub,
+    "swift_toolchain": _swift_toolchain_macro_stub,
     "versioned_alias": _versioned_alias_macro_stub,
 }
 

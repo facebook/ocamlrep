@@ -26,24 +26,41 @@ load(
     "@prelude//utils:utils.bzl",
     "map_idx",
 )
-load(":packages.bzl", "merge_pkgs")
+load(
+    ":packages.bzl",
+    "GoPkg",  # @Unused used as type
+    "merge_pkgs",
+    "pkg_artifacts",
+)
 load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_cmd_args")
 
 # Provider wrapping packages used for linking.
 GoPkgLinkInfo = provider(fields = [
-    "pkgs",  # {str.type: "artifact"}
+    "pkgs",  # {str: "artifact"}
 ])
 
-def get_inherited_link_pkgs(deps: ["dependency"]) -> {str.type: "artifact"}:
+GoBuildMode = enum(
+    "executable",
+    "c_shared",
+)
+
+def _build_mode_param(mode: GoBuildMode.type) -> str:
+    if mode == GoBuildMode("executable"):
+        return "exe"
+    if mode == GoBuildMode("c_shared"):
+        return "c-shared"
+    fail("unexpected: {}", mode)
+
+def get_inherited_link_pkgs(deps: list[Dependency]) -> dict[str, GoPkg.type]:
     return merge_pkgs([d[GoPkgLinkInfo].pkgs for d in deps if GoPkgLinkInfo in d])
 
-def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["dependency"]):
+def _process_shared_dependencies(ctx: AnalysisContext, artifact: "artifact", deps: list[Dependency], link_style: LinkStyle.type):
     """
     Provides files and linker args needed to for binaries with shared library linkage.
     - the runtime files needed to run binary linked with shared libraries
     - linker arguments for shared libraries
     """
-    if ctx.attrs.link_style != "shared":
+    if link_style != LinkStyle("shared"):
         return ([], [])
 
     shlib_info = merge_shared_libraries(
@@ -56,7 +73,6 @@ def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["d
 
     extra_link_args, runtime_files, _ = executable_shared_lib_arguments(
         ctx.actions,
-        ctx.label,
         ctx.attrs._go_toolchain[GoToolchainInfo].cxx_toolchain_for_linking,
         artifact,
         shared_libs,
@@ -64,41 +80,57 @@ def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["d
 
     return (runtime_files, extra_link_args)
 
-def link(ctx: "context", main: "artifact", pkgs: {str.type: "artifact"} = {}, deps: ["dependency"] = [], link_mode = None):
+def link(
+        ctx: AnalysisContext,
+        main: "artifact",
+        pkgs: dict[str, "artifact"] = {},
+        deps: list[Dependency] = [],
+        build_mode: GoBuildMode.type = GoBuildMode("executable"),
+        link_mode: [str, None] = None,
+        link_style: LinkStyle.type = LinkStyle("static"),
+        linker_flags: list[""] = [],
+        shared: bool = False):
     go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
-    output = ctx.actions.declare_output(ctx.label.name)
+    if go_toolchain.env_go_os == "windows":
+        executable_extension = ".exe"
+        shared_extension = ".dll"
+    else:
+        executable_extension = ""
+        shared_extension = ".so"
+    file_extension = shared_extension if build_mode == GoBuildMode("c_shared") else executable_extension
+    output = ctx.actions.declare_output(ctx.label.name + file_extension)
 
     cmd = get_toolchain_cmd_args(go_toolchain)
 
     cmd.add(go_toolchain.linker)
+    if shared:
+        cmd.add(go_toolchain.linker_flags_shared)
+    else:
+        cmd.add(go_toolchain.linker_flags_static)
 
     cmd.add("-o", output.as_output())
-    cmd.add("-buildmode", "exe")  # TODO(agallagher): support other modes
+    cmd.add("-buildmode=" + _build_mode_param(build_mode))
     cmd.add("-buildid=")  # Setting to a static buildid helps make the binary reproducible.
 
     # Add inherited Go pkgs to library search path.
-    all_pkgs = merge_pkgs([pkgs, get_inherited_link_pkgs(deps)])
+    all_pkgs = merge_pkgs([
+        pkgs,
+        pkg_artifacts(get_inherited_link_pkgs(deps), shared = shared),
+    ])
     pkgs_dir = ctx.actions.symlinked_dir(
         "__link_pkgs__",
         {name + path.extension: path for name, path in all_pkgs.items()},
     )
     cmd.add("-L", pkgs_dir)
 
-    link_style = ctx.attrs.link_style
-    if link_style == None:
-        link_style = "static"
-
-    runtime_files, extra_link_args = _process_shared_dependencies(ctx, main, deps)
+    runtime_files, extra_link_args = _process_shared_dependencies(ctx, output, deps, link_style)
 
     # Gather external link args from deps.
-    ext_links = get_link_args(
-        cxx_inherited_link_info(ctx, deps),
-        LinkStyle(link_style),
-    )
+    ext_links = get_link_args(cxx_inherited_link_info(ctx, deps), link_style)
     ext_link_args = cmd_args(unpack_link_args(ext_links))
     ext_link_args.add(cmd_args(extra_link_args, quote = "shell"))
 
-    if not link_mode:
+    if link_mode == None:
         if go_toolchain.cxx_toolchain_for_linking != None:
             link_mode = "external"
         else:
@@ -129,8 +161,7 @@ def link(ctx: "context", main: "artifact", pkgs: {str.type: "artifact"} = {}, de
         )
         cmd.add("-extld", linker_wrapper).hidden(cxx_link_cmd)
 
-    if ctx.attrs.linker_flags:
-        cmd.add(ctx.attrs.linker_flags)
+    cmd.add(linker_flags)
 
     cmd.add(main)
 

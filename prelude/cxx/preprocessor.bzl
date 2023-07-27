@@ -30,14 +30,24 @@ load(":platform.bzl", "cxx_by_platform")
 
 SystemIncludeDirs = record(
     # Compiler type to infer correct include flags
-    compiler_type = field(str.type),
+    compiler_type = field(str),
     #  Directories to be included via [-isystem | /external:I] [arglike things]
     include_dirs = field(["label_relative_path"]),
 )
 
-CPreprocessor = record(
+CPreprocessorArgs = record(
     # The arguments, [arglike things]
     args = field([""], []),
+    # File prefix args maps symlinks to source file location
+    file_prefix_args = field([""], []),
+)
+
+# Note: Any generic attributes are assumed to be relative.
+CPreprocessor = record(
+    # Relative path args to be used for build operations.
+    relative_args = field(CPreprocessorArgs.type, CPreprocessorArgs()),
+    # Absolute path args used to generate extra user-specific outputs.
+    absolute_args = field(CPreprocessorArgs.type, CPreprocessorArgs()),
     # Header specs
     headers = field([CHeader.type], []),
     # Those should be mutually exclusive with normal headers as per documentation
@@ -47,46 +57,56 @@ CPreprocessor = record(
     # Directories to be included via -isystem, [arglike things]
     system_include_dirs = field([SystemIncludeDirs.type, None], None),
     # Whether to compile with modules support
-    uses_modules = field(bool.type, False),
+    uses_modules = field(bool, False),
     # Modular args to set when modules are in use, [arglike things]
     modular_args = field([""], []),
-    # File prefix args maps symlinks to source file location
-    file_prefix_args = field([""], []),
     modulemap_path = field("", None),
 )
 
 # Methods for transitive_sets must be declared prior to their use.
 
-def _cpreprocessor_args(pres: [CPreprocessor.type]):
+def _cpreprocessor_args(pres: list[CPreprocessor.type]):
     args = cmd_args()
     for pre in pres:
-        args.add(pre.args)
+        args.add(pre.relative_args.args)
     return args
 
-def _cpreprocessor_modular_args(pres: [CPreprocessor.type]):
+def _cpreprocessor_abs_args(pres: list[CPreprocessor.type]):
+    args = cmd_args()
+    for pre in pres:
+        args.add(pre.absolute_args.args)
+    return args
+
+def _cpreprocessor_modular_args(pres: list[CPreprocessor.type]):
     args = cmd_args()
     for pre in pres:
         args.add(pre.modular_args)
     return args
 
-def _cpreprocessor_file_prefix_args(pres: [CPreprocessor.type]):
+def _cpreprocessor_file_prefix_args(pres: list[CPreprocessor.type]):
     args = cmd_args()
     for pre in pres:
-        args.add(pre.file_prefix_args)
+        args.add(pre.relative_args.file_prefix_args)
     return args
 
-def _cpreprocessor_include_dirs(pres: [CPreprocessor.type]):
+def _cpreprocessor_abs_file_prefix_args(pres: list[CPreprocessor.type]):
+    args = cmd_args()
+    for pre in pres:
+        args.add(pre.absolute_args.file_prefix_args)
+    return args
+
+def _cpreprocessor_include_dirs(pres: list[CPreprocessor.type]):
     args = cmd_args()
     for pre in pres:
         for d in pre.include_dirs:
-            args.add(cmd_args(d, format = "-I{}"))
+            args.add(cmd_args(d, format = "-I./{}"))
         if pre.system_include_dirs != None:
             for d in pre.system_include_dirs.include_dirs:
                 system_include_args = format_system_include_arg(cmd_args(d), pre.system_include_dirs.compiler_type)
                 args.add(system_include_args)
     return args
 
-def _cpreprocessor_uses_modules(children: [bool.type], pres: [[CPreprocessor.type], None]):
+def _cpreprocessor_uses_modules(children: list[bool], pres: [list[CPreprocessor.type], None]):
     if pres:
         for pre in pres:
             if pre.uses_modules:
@@ -98,6 +118,8 @@ def _cpreprocessor_uses_modules(children: [bool.type], pres: [[CPreprocessor.typ
 # exported pp info and one for not-exported).
 CPreprocessorTSet = transitive_set(
     args_projections = {
+        "abs_args": _cpreprocessor_abs_args,
+        "abs_file_prefix_args": _cpreprocessor_abs_file_prefix_args,
         "args": _cpreprocessor_args,
         "file_prefix_args": _cpreprocessor_file_prefix_args,
         "include_dirs": _cpreprocessor_include_dirs,
@@ -116,7 +138,7 @@ CPreprocessorInfo = provider(fields = [
 # so that tests can have access to the private headers of
 # the first order deps (for testing purposes).
 CPreprocessorForTestsInfo = provider(fields = [
-    # [str.type] - list of targets in "tests"
+    # [str] - list of targets in "tests"
     "test_names",  #
     # CPreprocessor.type - the private preprocessor
     # for the target which is _only_ exposed to any
@@ -125,29 +147,29 @@ CPreprocessorForTestsInfo = provider(fields = [
 ])
 
 # Preprocessor flags
-def cxx_attr_preprocessor_flags(ctx: "context", ext: str.type) -> [""]:
+def cxx_attr_preprocessor_flags(ctx: AnalysisContext, ext: str) -> list[""]:
     return (
         ctx.attrs.preprocessor_flags +
-        cxx_by_language_ext(ctx.attrs.lang_preprocessor_flags, ext, ctx.label) +
+        cxx_by_language_ext(ctx.attrs.lang_preprocessor_flags, ext) +
         flatten(cxx_by_platform(ctx, ctx.attrs.platform_preprocessor_flags)) +
-        flatten(cxx_by_platform(ctx, cxx_by_language_ext(ctx.attrs.lang_platform_preprocessor_flags, ext, ctx.label)))
+        flatten(cxx_by_platform(ctx, cxx_by_language_ext(ctx.attrs.lang_platform_preprocessor_flags, ext)))
     )
 
-def cxx_attr_exported_preprocessor_flags(ctx: "context") -> [""]:
+def cxx_attr_exported_preprocessor_flags(ctx: AnalysisContext) -> list[""]:
     return (
         ctx.attrs.exported_preprocessor_flags +
-        _by_language_cxx(ctx.attrs.exported_lang_preprocessor_flags, ctx.label) +
+        _by_language_cxx(ctx.attrs.exported_lang_preprocessor_flags) +
         flatten(cxx_by_platform(ctx, ctx.attrs.exported_platform_preprocessor_flags)) +
-        flatten(cxx_by_platform(ctx, _by_language_cxx(ctx.attrs.exported_lang_platform_preprocessor_flags, ctx.label)))
+        flatten(cxx_by_platform(ctx, _by_language_cxx(ctx.attrs.exported_lang_platform_preprocessor_flags)))
     )
 
-def cxx_inherited_preprocessor_infos(first_order_deps: ["dependency"]) -> [CPreprocessorInfo.type]:
+def cxx_inherited_preprocessor_infos(first_order_deps: list[Dependency]) -> list[CPreprocessorInfo.type]:
     # We filter out nones because some non-cxx rule without such providers could be a dependency, for example
     # cxx_binary "fbcode//one_world/cli/util/process_wrapper:process_wrapper" depends on
     # python_library "fbcode//third-party-buck/$platform/build/glibc:__project__"
     return filter(None, [x.get(CPreprocessorInfo) for x in first_order_deps])
 
-def cxx_merge_cpreprocessors(ctx: "context", own: [CPreprocessor.type], xs: [CPreprocessorInfo.type]) -> "CPreprocessorInfo":
+def cxx_merge_cpreprocessors(ctx: AnalysisContext, own: list[CPreprocessor.type], xs: list[CPreprocessorInfo.type]) -> "CPreprocessorInfo":
     kwargs = {"children": [x.set for x in xs]}
     if own:
         kwargs["value"] = own
@@ -155,19 +177,19 @@ def cxx_merge_cpreprocessors(ctx: "context", own: [CPreprocessor.type], xs: [CPr
         set = ctx.actions.tset(CPreprocessorTSet, **kwargs),
     )
 
-def _format_include_arg(flag: str.type, path: "cmd_args", compiler_type: str.type) -> ["cmd_args"]:
+def _format_include_arg(flag: str, path: cmd_args, compiler_type: str) -> list[cmd_args]:
     if compiler_type == "windows":
         return [cmd_args(path, format = flag + "{}")]
     else:
-        return [cmd_args(flag), path]
+        return [cmd_args(flag), cmd_args(path, format = "./{}")]
 
-def format_system_include_arg(path: "cmd_args", compiler_type: str.type) -> ["cmd_args"]:
+def format_system_include_arg(path: cmd_args, compiler_type: str) -> list[cmd_args]:
     if compiler_type == "windows":
         return [cmd_args(path, format = "/external:I{}")]
     else:
-        return [cmd_args("-isystem"), path]
+        return [cmd_args("-isystem"), cmd_args(path, format = "./{}")]
 
-def cxx_exported_preprocessor_info(ctx: "context", headers_layout: CxxHeadersLayout.type, extra_preprocessors: [CPreprocessor.type] = []) -> CPreprocessor.type:
+def cxx_exported_preprocessor_info(ctx: AnalysisContext, headers_layout: CxxHeadersLayout.type, extra_preprocessors: list[CPreprocessor.type] = [], absolute_path_prefix: [str, None] = None) -> CPreprocessor.type:
     """
     This rule's preprocessor info which is both applied to the compilation of
     its source and propagated to the compilation of dependent's sources.
@@ -212,7 +234,25 @@ def cxx_exported_preprocessor_info(ctx: "context", headers_layout: CxxHeadersLay
     include_dirs.extend([ctx.label.path.add(x) for x in ctx.attrs.public_include_directories])
     system_include_dirs.extend([ctx.label.path.add(x) for x in ctx.attrs.public_system_include_directories])
 
-    header_root = prepare_headers(ctx, exported_header_map, "buck-headers")
+    relative_args = _get_exported_preprocessor_args(ctx, exported_header_map, style, compiler_type, raw_headers, extra_preprocessors, None)
+    absolute_args = _get_exported_preprocessor_args(ctx, exported_header_map, style, compiler_type, raw_headers, extra_preprocessors, absolute_path_prefix) if absolute_path_prefix else CPreprocessorArgs()
+
+    modular_args = []
+    for pre in extra_preprocessors:
+        modular_args.extend(pre.modular_args)
+
+    return CPreprocessor(
+        relative_args = CPreprocessorArgs(args = relative_args.args, file_prefix_args = relative_args.file_prefix_args),
+        absolute_args = CPreprocessorArgs(args = absolute_args.args, file_prefix_args = absolute_args.file_prefix_args),
+        headers = exported_headers,
+        raw_headers = raw_headers,
+        include_dirs = include_dirs,
+        system_include_dirs = SystemIncludeDirs(compiler_type = compiler_type, include_dirs = system_include_dirs),
+        modular_args = modular_args,
+    )
+
+def _get_exported_preprocessor_args(ctx: AnalysisContext, headers: dict[str, "artifact"], style: HeaderStyle.type, compiler_type: str, raw_headers: list["artifact"], extra_preprocessors: list[CPreprocessor.type], absolute_path_prefix: [str, None]) -> CPreprocessorArgs.type:
+    header_root = prepare_headers(ctx, headers, "buck-headers", absolute_path_prefix)
 
     # Process args to handle the `$(cxx-header-tree)` macro.
     args = []
@@ -223,9 +263,8 @@ def cxx_exported_preprocessor_info(ctx: "context", headers_layout: CxxHeadersLay
             arg = _cxx_header_tree_hack_replacement(header_root.symlink_tree)
         args.append(arg)
 
-    file_prefix_args = []
-
     # Propagate the exported header tree.
+    file_prefix_args = []
     if header_root != None:
         args.extend(_header_style_args(style, header_root.include_path, compiler_type))
         if header_root.file_prefix_args != None:
@@ -238,31 +277,21 @@ def cxx_exported_preprocessor_info(ctx: "context", headers_layout: CxxHeadersLay
         # appears to do the job (and not e.g. expand to `""`).
         args.append(cmd_args().hidden(raw_headers))
 
-    modular_args = []
-
     # Append any extra preprocessor info passed in via the constructor params
     for pre in extra_preprocessors:
-        args.extend(pre.args)
-        modular_args.extend(pre.modular_args)
+        args.extend(pre.absolute_args.args if absolute_path_prefix else pre.relative_args.args)
 
-    return CPreprocessor(
-        args = args,
-        headers = exported_headers,
-        raw_headers = raw_headers,
-        include_dirs = include_dirs,
-        system_include_dirs = SystemIncludeDirs(compiler_type = compiler_type, include_dirs = system_include_dirs),
-        modular_args = modular_args,
-        file_prefix_args = file_prefix_args,
-    )
+    return CPreprocessorArgs(args = args, file_prefix_args = file_prefix_args)
 
 def cxx_private_preprocessor_info(
-        ctx: "context",
+        ctx: AnalysisContext,
         headers_layout: CxxHeadersLayout.type,
-        raw_headers: ["artifact"] = [],
-        extra_preprocessors: [CPreprocessor.type] = [],
-        non_exported_deps: ["dependency"] = [],
-        is_test: bool.type = False) -> (CPreprocessor.type, [CPreprocessor.type]):
-    private_preprocessor = _cxx_private_preprocessor_info(ctx, headers_layout, raw_headers, extra_preprocessors)
+        raw_headers: list["artifact"] = [],
+        extra_preprocessors: list[CPreprocessor.type] = [],
+        non_exported_deps: list[Dependency] = [],
+        is_test: bool = False,
+        absolute_path_prefix: [str, None] = None) -> (CPreprocessor.type, list[CPreprocessor.type]):
+    private_preprocessor = _cxx_private_preprocessor_info(ctx, headers_layout, raw_headers, extra_preprocessors, absolute_path_prefix)
 
     test_preprocessors = []
     if is_test:
@@ -274,10 +303,11 @@ def cxx_private_preprocessor_info(
     return (private_preprocessor, test_preprocessors)
 
 def _cxx_private_preprocessor_info(
-        ctx: "context",
+        ctx: AnalysisContext,
         headers_layout: CxxHeadersLayout.type,
-        raw_headers: ["artifact"],
-        extra_preprocessors: [CPreprocessor.type]) -> CPreprocessor.type:
+        raw_headers: list["artifact"],
+        extra_preprocessors: list[CPreprocessor.type],
+        absolute_path_prefix: [str, None]) -> CPreprocessor.type:
     """
     This rule's preprocessor info which is only applied to the compilation of
     its source, and not propagated to dependents.
@@ -294,10 +324,9 @@ def _cxx_private_preprocessor_info(
             ),
         )
 
-    uses_modules = False
-
     # Include any headers provided via constructor params and determine whether
-    # to use modules
+    # to use modules.
+    uses_modules = False
     for pp in extra_preprocessors:
         headers += pp.headers
         uses_modules = uses_modules or pp.uses_modules
@@ -320,10 +349,23 @@ def _cxx_private_preprocessor_info(
     all_raw_headers.extend(raw_headers)
     include_dirs.extend([ctx.label.path.add(x) for x in ctx.attrs.include_directories])
 
+    relative_args = _get_private_preprocessor_args(ctx, header_map, compiler_type, all_raw_headers, None)
+    absolute_args = _get_private_preprocessor_args(ctx, header_map, compiler_type, all_raw_headers, absolute_path_prefix) if absolute_path_prefix else CPreprocessorArgs()
+
+    return CPreprocessor(
+        relative_args = CPreprocessorArgs(args = relative_args.args, file_prefix_args = relative_args.file_prefix_args),
+        absolute_args = CPreprocessorArgs(args = absolute_args.args, file_prefix_args = absolute_args.file_prefix_args),
+        headers = headers,
+        raw_headers = all_raw_headers,
+        include_dirs = include_dirs,
+        uses_modules = uses_modules,
+    )
+
+def _get_private_preprocessor_args(ctx: AnalysisContext, headers: dict[str, "artifact"], compiler_type: str, all_raw_headers: list["artifact"], absolute_path_prefix: [str, None]) -> CPreprocessorArgs.type:
     # Create private header tree and propagate via args.
     args = []
     file_prefix_args = []
-    header_root = prepare_headers(ctx, header_map, "buck-private-headers")
+    header_root = prepare_headers(ctx, headers, "buck-private-headers", absolute_path_prefix)
     if header_root != None:
         args.extend(_format_include_arg("-I", header_root.include_path, compiler_type))
         if header_root.file_prefix_args != None:
@@ -336,26 +378,19 @@ def _cxx_private_preprocessor_info(
         # appears to do the job (and not e.g. expand to `""`).
         args.append(cmd_args().hidden(all_raw_headers))
 
-    return CPreprocessor(
-        args = args,
-        headers = headers,
-        raw_headers = all_raw_headers,
-        include_dirs = include_dirs,
-        uses_modules = uses_modules,
-        file_prefix_args = file_prefix_args,
-    )
+    return CPreprocessorArgs(args = args, file_prefix_args = file_prefix_args)
 
-def _by_language_cxx(x: {"": ""}, label: "label") -> [""]:
-    return cxx_by_language_ext(x, ".cpp", label)
+def _by_language_cxx(x: dict["", ""]) -> list[""]:
+    return cxx_by_language_ext(x, ".cpp")
 
-def _header_style_args(style: HeaderStyle.type, path: "cmd_args", compiler_type: str.type) -> ["cmd_args"]:
+def _header_style_args(style: HeaderStyle.type, path: cmd_args, compiler_type: str) -> list[cmd_args]:
     if style == HeaderStyle("local"):
         return _format_include_arg("-I", path, compiler_type)
     if style == HeaderStyle("system"):
         return format_system_include_arg(path, compiler_type)
     fail("unsupported header style: {}".format(style))
 
-def _attr_headers_as_raw_headers_mode(ctx: "context") -> HeadersAsRawHeadersMode.type:
+def _attr_headers_as_raw_headers_mode(ctx: AnalysisContext) -> HeadersAsRawHeadersMode.type:
     """
     Return the `HeadersAsRawHeadersMode` setting to use for this rule.
     """
@@ -373,13 +408,13 @@ def _attr_headers_as_raw_headers_mode(ctx: "context") -> HeadersAsRawHeadersMode
     # Fallback to platform default.
     return mode
 
-def _needs_cxx_header_tree_hack(arg: "") -> bool.type:
+def _needs_cxx_header_tree_hack(arg: "") -> bool:
     # The macro $(cxx-header-tree) is used in exactly once place, and its a place which isn't very
     # Buck v2 compatible. We replace $(cxx-header-tree) with HACK-CXX-HEADER-TREE at attribute time,
     # then here we substitute in the real header tree.
     return "HACK-CXX-HEADER-TREE" in repr(arg)
 
-def _cxx_header_tree_hack_replacement(header_tree: "artifact") -> "cmd_args":
+def _cxx_header_tree_hack_replacement(header_tree: "artifact") -> cmd_args:
     # Unfortunately, we can't manipulate flags very precisely (for good reasons), so we rely on
     # knowing the form it takes.
     # The source is: -fmodule-map-file=$(cxx-header-tree)/module.modulemap
@@ -387,7 +422,7 @@ def _cxx_header_tree_hack_replacement(header_tree: "artifact") -> "cmd_args":
 
 # Remap the given headers to be includable via their basenames (for use with
 # "apple" style header naming).
-def _remap_headers_to_basename(headers: [CHeader.type]) -> [CHeader.type]:
+def _remap_headers_to_basename(headers: list[CHeader.type]) -> list[CHeader.type]:
     remapped_headers = []
     for header in headers:
         if not header.named:
@@ -399,7 +434,7 @@ def _remap_headers_to_basename(headers: [CHeader.type]) -> [CHeader.type]:
             ))
     return remapped_headers
 
-def get_flags_for_compiler_type(compiler_type: str.type) -> [str.type]:
+def get_flags_for_compiler_type(compiler_type: str) -> list[str]:
     # MSVC requires this flag to enable external headers
     if compiler_type in ["windows"]:
         return ["/experimental:external", "/nologo"]

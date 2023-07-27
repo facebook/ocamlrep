@@ -18,9 +18,10 @@ AndroidBinaryNativeLibsInfo = record(
     apk_under_test_prebuilt_native_library_dirs = ["PrebuiltNativeLibraryDir"],
     apk_under_test_shared_libraries = ["SharedLibrary"],
     exopackage_info = ["ExopackageNativeInfo", None],
-    native_lib_assets = ["artifact"],
+    root_module_native_lib_assets = ["artifact"],
+    non_root_module_native_lib_assets = ["artifact"],
     native_libs_for_primary_apk = ["artifact"],
-    unstripped_libs = ["artifact"],
+    unstripped_libs = {"artifact": str},
 )
 
 AndroidBinaryResourcesInfo = record(
@@ -50,14 +51,14 @@ AndroidBinaryResourcesInfo = record(
 
 # Information about an `android_build_config`
 BuildConfigField = record(
-    type = str.type,
-    name = str.type,
-    value = str.type,
+    type = str,
+    name = str,
+    value = str,
 )
 
 AndroidBuildConfigInfo = provider(
     fields = [
-        "package",  # str.type
+        "package",  # str
         "build_config_fields",  # ["BuildConfigField"]
     ],
 )
@@ -77,14 +78,21 @@ AndroidApkInfo = provider(
     ],
 )
 
+AndroidAabInfo = provider(
+    fields = [
+        "aab",
+        "manifest",
+    ],
+)
+
 AndroidApkUnderTestInfo = provider(
     fields = [
         "java_packaging_deps",  # set_type("JavaPackagingDep")
         "keystore",  # "KeystoreInfo"
-        "manifest_entries",  # dict.type
+        "manifest_entries",  # dict
         "prebuilt_native_library_dirs",  # set_type("PrebuiltNativeLibraryDir")
-        "platforms",  # [str.type]
-        "primary_platform",  # str.type
+        "platforms",  # [str]
+        "primary_platform",  # str
         "resource_infos",  # set_type("ResourceInfos")
         "shared_libraries",  # set_type("SharedLibrary")
     ],
@@ -99,8 +107,8 @@ AndroidInstrumentationApkInfo = provider(
 PrebuiltNativeLibraryDir = record(
     raw_target = "target_label",
     dir = "artifact",  # contains subdirectories for different ABIs.
-    for_primary_apk = bool.type,
-    is_asset = bool.type,
+    for_primary_apk = bool,
+    is_asset = bool,
 )
 
 def _artifacts(value: "ManifestInfo"):
@@ -133,6 +141,9 @@ AndroidPackageableInfo = provider(
     ],
 )
 
+RESOURCE_PRIORITY_NORMAL = "normal"
+RESOURCE_PRIORITY_LOW = "low"
+
 # Information about an `android_resource`
 AndroidResourceInfo = provider(
     fields = [
@@ -141,7 +152,7 @@ AndroidResourceInfo = provider(
         # output of running `aapt2_compile` on the resources, if resources are present
         "aapt2_compile_output",  # ["artifact", None]
         #  if False, then the "res" are not affected by the strings-as-assets resource filter
-        "allow_strings_as_assets_resource_filtering",  # bool.type
+        "allow_strings_as_assets_resource_filtering",  # bool
         # assets defined by this rule. May be empty
         "assets",  # ["artifact", None]
         # manifest file used by the resources, if resources are present
@@ -150,6 +161,8 @@ AndroidResourceInfo = provider(
         "r_dot_java_package",  # ["artifact", None]
         # resources defined by this rule. May be empty
         "res",  # ["artifact", None]
+        # priority of the resources, may be 'low' or 'normal'
+        "res_priority",  # str.type
         # symbols defined by the resources, if resources are present
         "text_symbols",  # ["artifact", None]
     ],
@@ -177,14 +190,13 @@ ExopackageResourcesInfo = record(
     assets_hash = ["artifact", None],
     res = "artifact",
     res_hash = "artifact",
-    third_party_jar_resources = "artifact",
-    third_party_jar_resources_hash = "artifact",
 )
 
 DexFilesInfo = record(
     primary_dex = "artifact",
     primary_dex_class_names = ["artifact", None],
-    secondary_dex_dirs = ["artifact"],
+    root_module_secondary_dex_dirs = ["artifact"],
+    non_root_module_secondary_dex_dirs = ["artifact"],
     secondary_dex_exopackage_info = [ExopackageDexInfo.type, None],
     proguard_text_files_path = ["artifact", None],
 )
@@ -204,9 +216,9 @@ AndroidLibraryIntellijInfo = provider(
 )
 
 def merge_android_packageable_info(
-        label: "label",
+        label: Label,
         actions: "actions",
-        deps: ["dependency"],
+        deps: list[Dependency],
         build_config_info: ["AndroidBuildConfigInfo", None] = None,
         manifest: ["artifact", None] = None,
         prebuilt_native_library_dir: [PrebuiltNativeLibraryDir.type, None] = None,
@@ -265,7 +277,7 @@ def merge_android_packageable_info(
 
 def _get_transitive_set(
         actions: "actions",
-        children: ["transitive_set"],
+        children: list["transitive_set"],
         node: "_a",
         transitive_set_definition: "transitive_set_definition") -> ["transitive_set", None]:
     kwargs = {}
@@ -277,7 +289,7 @@ def _get_transitive_set(
     return actions.tset(transitive_set_definition, **kwargs) if kwargs else None
 
 def merge_exported_android_resource_info(
-        exported_deps: ["dependency"]) -> "ExportedAndroidResourceInfo":
+        exported_deps: list[Dependency]) -> "ExportedAndroidResourceInfo":
     exported_android_resource_infos = []
     for exported_dep in exported_deps:
         exported_resource_info = exported_dep.get(ExportedAndroidResourceInfo)

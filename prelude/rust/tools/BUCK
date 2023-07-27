@@ -1,4 +1,11 @@
+load(":tool_rules.bzl", "get_rustc_cfg")
+
 prelude = native
+
+get_rustc_cfg(
+    name = "rustc_cfg",
+    visibility = ["PUBLIC"],
+)
 
 prelude.python_bootstrap_binary(
     name = "rustc_action",
@@ -27,5 +34,17 @@ prelude.python_bootstrap_binary(
 prelude.python_bootstrap_binary(
     name = "transitive_dependency_symlinks",
     main = "transitive_dependency_symlinks.py",
+    visibility = ["PUBLIC"],
+)
+
+prelude.python_bootstrap_binary(
+    name = "get_rustc_cfg",
+    main = "get_rustc_cfg.py",
+    visibility = [],
+)
+
+prelude.python_bootstrap_binary(
+    name = "buildscript_run",
+    main = "buildscript_run.py",
     visibility = ["PUBLIC"],
 )

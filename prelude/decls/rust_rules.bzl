@@ -51,7 +51,6 @@ prebuilt_rust_library = prelude_rule(
         } |
         rust_common.crate(crate_type = attrs.string(default = "")) |
         rust_common.deps_arg() |
-        buck.platform_deps_arg() |
         {
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -59,7 +58,6 @@ prebuilt_rust_library = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_style": attrs.option(attrs.enum(LinkableDepType), default = None),
             "proc_macro": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         } |
         rust_common.toolchains_args()
     ),
@@ -125,7 +123,6 @@ rust_binary = prelude_rule(
         rust_common.mapped_srcs_arg() |
         rust_common.deps_arg() |
         rust_common.named_deps_arg() |
-        buck.platform_deps_arg() |
         rust_common.edition_arg() |
         rust_common.features_arg() |
         rust_common.rustc_flags_arg() |
@@ -148,13 +145,9 @@ rust_binary = prelude_rule(
             "incremental_enabled": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "platform_flagged_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.tuple(attrs.dep(), attrs.list(attrs.string())))), default = []),
-            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
-            "platform_rustc_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source()), sorted = True, default = []),
             "rustdoc_flags": attrs.list(attrs.arg(), default = []),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
             "_target_os_type": buck.target_os_type_arg(),
         } |
@@ -205,7 +198,6 @@ rust_library = prelude_rule(
         rust_common.mapped_srcs_arg() |
         rust_common.deps_arg() |
         rust_common.named_deps_arg() |
-        buck.platform_deps_arg() |
         rust_common.edition_arg() |
         rust_common.features_arg() |
         rust_common.rustc_flags_arg() |
@@ -220,12 +212,10 @@ rust_library = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "default_platform": attrs.option(attrs.string(), default = None),
             "doc_deps": attrs.list(attrs.dep(), default = []),
-            "doc_env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
+            "doc_env": attrs.dict(key = attrs.string(), value = attrs.option(attrs.arg()), sorted = False, default = {}),
             "doc_linker_flags": attrs.list(attrs.arg(), default = []),
             "doc_named_deps": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
-            "doc_platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "doc_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
-            "doctests": attrs.bool(default = True),
+            "doctests": attrs.option(attrs.bool(), default = None),
             "doctest_link_style": attrs.option(attrs.enum(LinkableDepType), default = None, doc = """
             Like `link_style` on binaries, but applies specifically to doctests.
             """),
@@ -239,16 +229,13 @@ rust_library = prelude_rule(
             # them and it simplifies the implementation of Rust rules since they
             # don't have to know whether we're building a rust_binary or a
             # rust_library.
-            "linker_flags": attrs.list(attrs.arg(), default = []),
+            "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "platform_flagged_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.tuple(attrs.dep(), attrs.list(attrs.string())))), default = []),
-            "platform_rustc_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "proc_macro": attrs.bool(default = False),
             "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source()), sorted = True, default = []),
             "rustdoc_flags": attrs.list(attrs.arg(), default = []),
             "supports_python_dlopen": attrs.option(attrs.bool(), default = None),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
             "_omnibus_environment": omnibus_environment_attr(),
             "_target_os_type": buck.target_os_type_arg(),
@@ -316,7 +303,6 @@ rust_test = prelude_rule(
         rust_common.mapped_srcs_arg() |
         rust_common.deps_arg() |
         rust_common.named_deps_arg() |
-        buck.platform_deps_arg() |
         rust_common.edition_arg() |
         rust_common.features_arg() |
         rust_common.rustc_flags_arg() |
@@ -335,16 +321,12 @@ rust_test = prelude_rule(
             "incremental_enabled": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "linker_flags": attrs.list(attrs.arg(), default = []),
-            "platform_flagged_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.tuple(attrs.dep(), attrs.list(attrs.string())))), default = []),
-            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
-            "platform_rustc_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "remote_execution": buck.re_opts_for_tests_arg(),
             "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source()), sorted = True, default = []),
             "rpath": attrs.bool(default = False),
             "rustdoc_flags": attrs.list(attrs.arg(), default = []),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
             "_target_os_type": buck.target_os_type_arg(),
         } | rust_common.toolchains_args()

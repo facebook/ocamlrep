@@ -14,6 +14,9 @@ load("@prelude//apple:apple_rules_impl.bzl", _apple_extra_attributes = "extra_at
 
 # Configuration
 load("@prelude//configurations:rules.bzl", _config_extra_attributes = "extra_attributes", _config_implemented_rules = "implemented_rules")
+
+# C++ - LLVM
+load("@prelude//cxx:bitcode.bzl", "llvm_link_bitcode_impl")
 load("@prelude//cxx:cxx.bzl", "cxx_binary_impl", "cxx_library_impl", "cxx_precompiled_header_impl", "cxx_test_impl", "prebuilt_cxx_library_impl")
 load("@prelude//cxx:cxx_toolchain.bzl", "cxx_toolchain_extra_attributes", "cxx_toolchain_impl")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo", "CxxToolchainInfo")
@@ -25,12 +28,16 @@ load("@prelude//cxx:prebuilt_cxx_library_group.bzl", "prebuilt_cxx_library_group
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
 
 # Erlang
-load("@prelude//erlang:erlang.bzl", _erlang_extra_attributes = "attributes", _erlang_implemented_rules = "implemented_rules")
-load("@prelude//go:cgo_library.bzl", "cgo_library_impl")
-load("@prelude//go:coverage.bzl", "GoCoverageMode")
+load("@prelude//erlang:erlang.bzl", _erlang_implemented_rules = "implemented_rules")
+
+# Git
+load("@prelude//git:git_fetch.bzl", "git_fetch_impl")
 
 # Go
+load("@prelude//go:cgo_library.bzl", "cgo_library_impl")
+load("@prelude//go:coverage.bzl", "GoCoverageMode")
 load("@prelude//go:go_binary.bzl", "go_binary_impl")
+load("@prelude//go:go_exported_library.bzl", "go_exported_library_impl")
 load("@prelude//go:go_library.bzl", "go_library_impl")
 load("@prelude//go:go_test.bzl", "go_test_impl")
 
@@ -54,6 +61,7 @@ load("@prelude//julia:julia.bzl", _julia_extra_attributes = "extra_attributes", 
 
 # Kotlin
 load("@prelude//kotlin:kotlin.bzl", _kotlin_extra_attributes = "extra_attributes", _kotlin_implemented_rules = "implemented_rules")
+load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 
 # Linking
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
@@ -88,6 +96,8 @@ load("@prelude//decls/core_rules.bzl", "core_rules")
 load("@prelude//decls/cxx_rules.bzl", "cxx_rules")
 load("@prelude//decls/d_rules.bzl", "d_rules")
 load("@prelude//decls/dotnet_rules.bzl", "dotnet_rules")
+load("@prelude//decls/erlang_rules.bzl", "erlang_rules")
+load("@prelude//decls/git_rules.bzl", "git_rules")
 load("@prelude//decls/go_rules.bzl", "go_rules")
 load("@prelude//decls/groovy_rules.bzl", "groovy_rules")
 load("@prelude//decls/halide_rules.bzl", "halide_rules")
@@ -127,6 +137,8 @@ rule_decl_records = [
     cxx_rules,
     d_rules,
     dotnet_rules,
+    erlang_rules,
+    git_rules,
     go_rules,
     groovy_rules,
     halide_rules,
@@ -182,9 +194,16 @@ extra_implemented_rules = struct(
     prebuilt_cxx_library = prebuilt_cxx_library_impl,
     prebuilt_cxx_library_group = prebuilt_cxx_library_group_impl,
 
+    # C++ / LLVM
+    llvm_link_bitcode = llvm_link_bitcode_impl,
+
+    #git
+    git_fetch = git_fetch_impl,
+
     #go
     cgo_library = cgo_library_impl,
     go_binary = go_binary_impl,
+    go_exported_library = go_exported_library_impl,
     go_library = go_library_impl,
     go_test = go_test_impl,
 
@@ -276,6 +295,8 @@ def _python_executable_attrs():
 
     # allow non-default value for the args below
     updated_attrs.update({
+        "anonymous_link_groups": attrs.bool(default = False),
+        "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "compiler_flags": attrs.list(attrs.arg(), default = []),
         "constraint_overrides": attrs.list(attrs.string(), default = []),
         "cxx_main": attrs.source(default = "prelude//python/tools:embedded_main.cpp"),
@@ -286,9 +307,10 @@ def _python_executable_attrs():
         "link_group": attrs.option(attrs.string(), default = None),
         "link_group_map": link_group_map_attr(),
         "link_group_min_binary_node_count": attrs.option(attrs.int(), default = None),
+        "link_style": attrs.enum(LinkableDepType, default = "static"),
         "make_pex": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         # entries for the generated __manifest__ python module
-        "manifest_module_entries": attrs.option(attrs.dict(key = attrs.string(), value = attrs.any()), default = None),
+        "manifest_module_entries": attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.any())), default = None),
         "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
         "package_split_dwarf_dwp": attrs.bool(default = False),
         "par_style": attrs.option(attrs.string(), default = None),
@@ -317,18 +339,19 @@ def _python_test_attrs():
 
 def _cxx_binary_and_test_attrs():
     return {
+        "anonymous_link_groups": attrs.bool(default = False),
         "auto_link_groups": attrs.bool(default = False),
         # Linker flags that only apply to the executable link, used for link
         # strategies (e.g. link groups) which may link shared libraries from
         # top-level binary context.
-        "binary_linker_flags": attrs.list(attrs.arg(), default = []),
+        "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "bolt_flags": attrs.list(attrs.arg(), default = []),
         "bolt_gdb_index": attrs.option(attrs.source(), default = None),
         "bolt_profile": attrs.option(attrs.source(), default = None),
         "enable_distributed_thinlto": attrs.bool(default = False),
+        "link_execution_preference": link_execution_preference_attr(),
         "link_group_map": link_group_map_attr(),
         "link_group_min_binary_node_count": attrs.option(attrs.int(), default = None),
-        "link_locally_override": attrs.option(attrs.bool(), default = None),
         "link_ordering": attrs.option(attrs.enum(LinkOrdering.values()), default = None),
         "link_whole": attrs.default_only(attrs.bool(default = False)),
         "precompiled_header": attrs.option(attrs.dep(providers = [CPrecompiledHeaderInfo]), default = None),
@@ -379,12 +402,14 @@ inlined_extra_attributes = {
         "force_emit_omnibus_shared_root": attrs.bool(default = False),
         "header_mode": attrs.option(attrs.enum(HeaderMode.values()), default = None),
         "link_deps_query_whole": attrs.bool(default = False),
+        "link_execution_preference": link_execution_preference_attr(),
         "link_group_map": link_group_map_attr(),
         "link_ordering": attrs.option(attrs.enum(LinkOrdering.values()), default = None),
         "precompiled_header": attrs.option(attrs.dep(providers = [CPrecompiledHeaderInfo]), default = None),
         "prefer_stripped_objects": attrs.bool(default = False),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), sorted = True, default = []),
+        "supports_header_symlink_subtarget": attrs.bool(default = False),
         "supports_python_dlopen": attrs.option(attrs.bool(), default = None),
         "supports_shlib_interfaces": attrs.bool(default = True),
         "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
@@ -398,14 +423,18 @@ inlined_extra_attributes = {
         **_cxx_binary_and_test_attrs()
     ),
     "cxx_toolchain": cxx_toolchain_extra_attributes(is_toolchain_rule = False),
-    "genrule": genrule_attributes() | {
-        "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
-        "srcs": attrs.named_set(attrs.source(allow_directory = True), sorted = False, default = []),
-        "_exec_os_type": buck.exec_os_type_arg(),
-    },
+
+    # Generic rule to build from a command
+    "genrule": genrule_attributes(),
+
+    # Go
     "go_binary": {
         "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
         "resources": attrs.list(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), default = []),
+        "_go_toolchain": toolchains_common.go(),
+    },
+    "go_exported_library": {
+        "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
         "_go_toolchain": toolchains_common.go(),
     },
     "go_library": {
@@ -432,7 +461,13 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_haskell_toolchain": toolchains_common.haskell(),
     },
+    "haskell_ghci": {
+        "template_deps": attrs.list(attrs.exec_dep(providers = [HaskellLibraryProvider]), default = []),
+        "_cxx_toolchain": toolchains_common.cxx(),
+        "_haskell_toolchain": toolchains_common.haskell(),
+    },
     "haskell_ide": {
+        "include_projects": attrs.list(attrs.dep(), default = []),
         "_haskell_toolchain": toolchains_common.haskell(),
     },
     "haskell_library": {
@@ -441,18 +476,8 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_haskell_toolchain": toolchains_common.haskell(),
     },
-
-    # http things get only 1 hash in v1 but in v2 we allow multiple. Also,
-    # don't default hashes to empty strings.
-    "http_archive": {
-        "sha1": attrs.option(attrs.string(), default = None),
-        "sha256": attrs.option(attrs.string(), default = None),
-        "_create_exclusion_list": attrs.default_only(attrs.exec_dep(default = "prelude//http_archive/tools:create_exclusion_list")),
-        "_exec_os_type": buck.exec_os_type_arg(),
-    },
-    "http_file": {
-        "sha1": attrs.option(attrs.string(), default = None),
-        "sha256": attrs.option(attrs.string(), default = None),
+    "llvm_link_bitcode": {
+        "_cxx_toolchain": toolchains_common.cxx(),
     },
     "ndk_toolchain": {
         "cxx_toolchain": attrs.toolchain_dep(providers = [CxxToolchainInfo, CxxPlatformInfo]),
@@ -460,16 +485,20 @@ inlined_extra_attributes = {
     "prebuilt_cxx_library": {
         "exported_header_style": attrs.enum(IncludeType, default = "system"),
         "header_dirs": attrs.option(attrs.list(attrs.source(allow_directory = True)), default = None),
-        "linker_flags": attrs.list(attrs.arg(), default = []),
+        "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "platform_header_dirs": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.source(allow_directory = True)))), default = None),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
         "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
         "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
-        "supports_python_dlopen": attrs.option(attrs.bool(), default = None),
+        "supports_python_dlopen": attrs.bool(default = True),
         "versioned_header_dirs": attrs.option(attrs.versioned(attrs.list(attrs.source(allow_directory = True))), default = None),
         "_cxx_toolchain": toolchains_common.cxx(),
         "_omnibus_environment": omnibus_environment_attr(),
+        "_target_os_type": buck.target_os_type_arg(),
+    },
+    "prebuilt_cxx_library_group": {
+        "_cxx_toolchain": toolchains_common.cxx(),
     },
 
     #python
@@ -520,19 +549,6 @@ inlined_extra_attributes = {
     },
     "rust_test": {},
     "sh_test": {},
-    "test_suite": {
-        # On buck1 query, tests attribute on test_suite is treated as deps, while on buck2 it is not.
-        # While buck2's behavior makes more sense, we want to preserve buck1 behavior on test_suite for now to make TD behavior match between buck1 and buck2.
-        # This diff makes the behaviors match by adding a test_deps attribute to test_suite on buck2 that is used as a deps attribute. In the macro layer, we set test_deps = tests if we are using buck2.
-        # For more context: https://fb.prod.workplace.com/groups/603286664133355/posts/682567096205311/?comment_id=682623719532982&reply_comment_id=682650609530293
-        "test_deps": attrs.list(attrs.dep(), default = []),
-    },
-    "worker_tool": {
-        # overridden to handle buck1's use of @Value.Default
-        "args": attrs.one_of(attrs.arg(), attrs.list(attrs.arg()), default = []),
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_worker_tool_runner": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/tools/worker:worker_tool_runner")),
-    },
 }
 
 all_extra_attributes = _merge_dictionaries([
@@ -540,7 +556,6 @@ all_extra_attributes = _merge_dictionaries([
     _android_extra_attributes,
     _apple_extra_attributes,
     _config_extra_attributes,
-    _erlang_extra_attributes,
     _java_extra_attributes,
     _js_extra_attributes,
     _julia_extra_attributes,
@@ -577,6 +592,7 @@ extra_attributes = struct(**all_extra_attributes)
 
 # Configuration transitions to pass `cfg` for builtin rules.
 transitions = {
+    "android_binary": constraint_overrides_transition,
     "python_binary": constraint_overrides_transition,
     "python_test": constraint_overrides_transition,
 }

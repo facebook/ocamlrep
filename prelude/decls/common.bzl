@@ -14,11 +14,11 @@ def validate_uri(_s):
     return True
 
 prelude_rule = record(
-    name = field(str.type),
-    docs = field([str.type, None], None),
-    examples = field([str.type, None], None),
-    further = field([str.type, None], None),
-    attrs = field({str.type: "attribute"}),
+    name = field(str),
+    docs = field([str, None], None),
+    examples = field([str, None], None),
+    further = field([str, None], None),
+    attrs = field({str: "attribute"}),
     impl = field(["function", None], None),
 )
 
@@ -208,6 +208,7 @@ def _re_opts_for_tests_arg() -> "attribute":
     # {
     #     "capabilities": Dict<str, str> | None
     #     "use_case": str | None
+    #     "remote_cache_enabled": bool | None
     # }
     return attrs.option(
         attrs.dict(
@@ -220,6 +221,7 @@ def _re_opts_for_tests_arg() -> "attribute":
                         sorted = False,
                     ),
                     attrs.string(),
+                    attrs.bool(),
                 ),
                 # TODO(cjhopman): I think this default does nothing, it should be deleted
                 default = None,

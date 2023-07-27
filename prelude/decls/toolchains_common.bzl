@@ -10,9 +10,9 @@ load("@prelude//go:toolchain.bzl", "GoToolchainInfo")
 load("@prelude//haskell:haskell.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "PythonToolchainInfo")
 load("@prelude//python_bootstrap:python_bootstrap.bzl", "PythonBootstrapToolchainInfo")
-load("@prelude//rust:rust_toolchain.bzl", "RustPlatformInfo", "RustToolchainInfo")
+load("@prelude//rust:rust_toolchain.bzl", "RustToolchainInfo")
 
-def _toolchain(lang: str.type, providers: [""]) -> "attribute":
+def _toolchain(lang: str, providers: list[""]) -> "attribute":
     return attrs.default_only(attrs.toolchain_dep(default = "toolchains//:" + lang, providers = providers))
 
 def _cxx_toolchain():
@@ -22,7 +22,7 @@ def _haskell_toolchain():
     return _toolchain("haskell", [HaskellToolchainInfo, HaskellPlatformInfo])
 
 def _rust_toolchain():
-    return _toolchain("rust", [RustToolchainInfo, RustPlatformInfo])
+    return _toolchain("rust", [RustToolchainInfo])
 
 def _go_toolchain():
     return _toolchain("go", [GoToolchainInfo])

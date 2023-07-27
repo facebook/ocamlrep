@@ -11,13 +11,12 @@ load(
     "LinkInfo",
     "LinkInfos",
     "LinkStyle",
-    "Linkage",
+    "MergedLinkInfo",
     "ObjectsLinkable",
 )
 load(
     "@prelude//linking:linkable_graph.bzl",
     "DlopenableLibraryInfo",
-    "LinkableGraph",
     "LinkableRootInfo",
 )
 load(
@@ -33,24 +32,24 @@ LinkableProvidersTSet = transitive_set()
 CxxExtensionLinkInfo = provider(
     fields = [
         "linkable_providers",  # LinkableProvidersTSet.type
-        "artifacts",  # {str.type: "_a"}
-        "python_module_names",  # {str.type: str.type}
+        "artifacts",  # {str: "_a"}
+        "python_module_names",  # {str: str}
         "dlopen_deps",  # {"label": LinkableProviders.type}
         # Native python extensions that can't be linked into the main executable.
-        "unembeddable_extensions",  # {str.type: LinkableProviders.type}
+        "unembeddable_extensions",  # {str: LinkableProviders.type}
         # Native libraries that are only available as shared libs.
-        "shared_only_libs",  # {"label": LinkableProviders.type}
+        "shared_only_libs",  # {Label: LinkableProviders.type}
     ],
 )
 
 def merge_cxx_extension_info(
         actions: "actions",
-        deps: ["dependency"],
+        deps: list[Dependency],
         linkable_providers: [LinkableProviders.type, None] = None,
-        artifacts: {str.type: "_a"} = {},
-        python_module_names: {str.type: str.type} = {},
-        unembeddable_extensions: {str.type: LinkableProviders.type} = {},
-        shared_deps: ["dependency"] = []) -> CxxExtensionLinkInfo.type:
+        artifacts: dict[str, "_a"] = {},
+        python_module_names: dict[str, str] = {},
+        unembeddable_extensions: dict[str, LinkableProviders.type] = {},
+        shared_deps: list[Dependency] = []) -> CxxExtensionLinkInfo.type:
     linkable_provider_children = []
     artifacts = dict(artifacts)
     python_module_names = dict(python_module_names)
@@ -69,12 +68,7 @@ def merge_cxx_extension_info(
         # should *just* use `preferred_linkage` (and so it supports non-prebuilt
         # libs too), but this will require hoisting the rules first-order deps
         # up the tree as `dlopen_deps` so that we link them properly.
-        if (
-            LinkableRootInfo not in dep and
-            LinkableGraph in dep and
-            dep[LinkableGraph].nodes.value.linkable != None and
-            dep[LinkableGraph].nodes.value.linkable.preferred_linkage == Linkage("shared")
-        ):
+        if MergedLinkInfo in dep and LinkableRootInfo not in dep:
             shared_only_libs[dep.label] = linkable(dep)
 
     for dep in deps:
@@ -101,13 +95,13 @@ def merge_cxx_extension_info(
     )
 
 def rewrite_static_symbols(
-        ctx: "context",
-        suffix: str.type,
-        pic_objects: ["artifact"],
-        non_pic_objects: ["artifact"],
-        libraries: {LinkStyle.type: LinkInfos.type},
+        ctx: AnalysisContext,
+        suffix: str,
+        pic_objects: list["artifact"],
+        non_pic_objects: list["artifact"],
+        libraries: dict[LinkStyle.type, LinkInfos.type],
         cxx_toolchain: "CxxToolchainInfo",
-        suffix_all: bool.type = False) -> {LinkStyle.type: LinkInfos.type}:
+        suffix_all: bool = False) -> dict[LinkStyle.type, LinkInfos.type]:
     symbols_file = _write_syms_file(
         ctx = ctx,
         name = ctx.label.name + "_rename_syms",
@@ -170,12 +164,12 @@ def rewrite_static_symbols(
     return updated_libraries
 
 def _write_syms_file(
-        ctx: "context",
-        name: str.type,
-        objects: ["artifact"],
-        suffix: str.type,
+        ctx: AnalysisContext,
+        name: str,
+        objects: list["artifact"],
+        suffix: str,
         cxx_toolchain: "CxxToolchainInfo",
-        suffix_all: bool.type = False) -> "artifact":
+        suffix_all: bool = False) -> "artifact":
     """
     Take a list of objects and append a suffix to all  defined symbols.
     """
@@ -219,7 +213,8 @@ def _write_syms_file(
 
     ctx.actions.run(
         [
-            "/bin/bash",
+            "/usr/bin/env",
+            "bash",
             "-c",
             script,
         ],
@@ -231,9 +226,9 @@ def _write_syms_file(
     return symbols_file
 
 def suffix_symbols(
-        ctx: "context",
-        suffix: str.type,
-        objects: ["artifact"],
+        ctx: AnalysisContext,
+        suffix: str,
+        objects: list["artifact"],
         symbols_file: "artifact",
         cxx_toolchain: "CxxToolchainInfo") -> (ObjectsLinkable.type, ObjectsLinkable.type):
     """
@@ -263,7 +258,8 @@ def suffix_symbols(
         # Usage: objcopy [option(s)] in-file [out-file]
         ctx.actions.run(
             [
-                "/bin/bash",
+                "/usr/bin/env",
+                "bash",
                 "-c",
                 script,
             ],

@@ -14,21 +14,21 @@ load(":rust_toolchain.bzl", "RustToolchainInfo")
 # Struct for sharing common args between rustc and rustdoc
 # (rustdoc just relays bunch of the same args to rustc when trying to gen docs)
 CommonArgsInfo = record(
-    args = field("cmd_args"),
-    subdir = field(str.type),
-    tempfile = field(str.type),
-    short_cmd = field(str.type),
-    is_check = field(bool.type),
+    args = field(cmd_args),
+    subdir = field(str),
+    tempfile = field(str),
+    short_cmd = field(str),
+    is_check = field(bool),
     crate_map = field([(CrateName.type, "label")]),
 )
 
 ExternArg = record(
-    flags = str.type,
+    flags = str,
     lib = field("artifact"),
 )
 
 CrateMapArg = record(
-    label = field("label"),
+    label = field(Label),
 )
 
 # Compile info which is reusable between multiple compilation command performed
@@ -39,9 +39,9 @@ CompileContext = record(
     # Symlink root containing all sources.
     symlinked_srcs = field("artifact"),
     # Linker args to pass the linker wrapper to rustc.
-    linker_args = field("cmd_args"),
+    linker_args = field(cmd_args),
     # Clippy wrapper (wrapping clippy-driver so it has the same CLI as rustc).
-    clippy_wrapper = field("cmd_args"),
+    clippy_wrapper = field(cmd_args),
     # Memoized common args for reuse.
     common_args = field({(CrateType.type, Emit.type, LinkStyle.type): CommonArgsInfo.type}),
     flagfiles_for_extern = field({ExternArg.type: "artifact"}),

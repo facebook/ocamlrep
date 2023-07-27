@@ -14,6 +14,7 @@ load("@prelude//genrule.bzl", "genrule_attributes")
 load(":android_aar.bzl", "android_aar_impl")
 load(":android_apk.bzl", "android_apk_impl")
 load(":android_build_config.bzl", "android_build_config_impl")
+load(":android_bundle.bzl", "android_bundle_impl")
 load(":android_instrumentation_apk.bzl", "android_instrumentation_apk_impl")
 load(":android_instrumentation_test.bzl", "android_instrumentation_test_impl")
 load(":android_library.bzl", "android_library_impl")
@@ -22,7 +23,8 @@ load(":android_prebuilt_aar.bzl", "android_prebuilt_aar_impl")
 load(":android_resource.bzl", "android_resource_impl")
 load(":android_toolchain.bzl", "AndroidPlatformInfo", "AndroidToolchainInfo")
 load(":apk_genrule.bzl", "apk_genrule_impl")
-load(":configuration.bzl", "cpu_split_transition", "cpu_split_transition_instrumentation_test_apk", "cpu_transition", "do_not_build_only_native_code_transition", "is_building_android_binary_attr")
+load(":build_only_native_code.bzl", "is_build_only_native_code")
+load(":configuration.bzl", "cpu_split_transition", "cpu_transition", "is_building_android_binary_attr")
 load(":gen_aidl.bzl", "gen_aidl_impl")
 load(":prebuilt_native_library.bzl", "prebuilt_native_library_impl")
 load(":robolectric_test.bzl", "robolectric_test_impl")
@@ -76,19 +78,12 @@ def _kotlin_toolchain():
         ],
     )
 
-def is_build_only_native_code():
-    return select(
-        {
-            "DEFAULT": False,
-            "fbsource//xplat/buck2/platform/android:build_only_native_code": True,
-        },
-    )
-
 implemented_rules = {
     "android_aar": android_aar_impl,
     "android_app_modularity": android_app_modularity_impl,
     "android_binary": android_apk_impl,
     "android_build_config": android_build_config_impl,
+    "android_bundle": android_bundle_impl,
     "android_instrumentation_apk": android_instrumentation_apk_impl,
     "android_instrumentation_test": android_instrumentation_test_impl,
     "android_library": android_library_impl,
@@ -102,8 +97,8 @@ implemented_rules = {
 }
 
 # Can't load `read_bool` here because it will cause circular load.
-FORCE_SINGLE_CPU = read_config("buck2", "android_force_single_cpu") in ("True", "true")
-FORCE_SINGLE_DEFAULT_CPU = read_config("buck2", "android_force_single_default_cpu") in ("True", "true")
+FORCE_SINGLE_CPU = read_root_config("buck2", "android_force_single_cpu") in ("True", "true")
+FORCE_SINGLE_DEFAULT_CPU = read_root_config("buck2", "android_force_single_default_cpu") in ("True", "true")
 
 extra_attributes = {
     "android_aar": {
@@ -118,6 +113,7 @@ extra_attributes = {
         "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
+        "constraint_overrides": attrs.list(attrs.string(), default = []),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
@@ -138,11 +134,29 @@ extra_attributes = {
         "_is_building_android_binary": is_building_android_binary_attr(),
         "_java_toolchain": java_toolchain_for_android(),
     },
+    "android_bundle": {
+        "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
+        "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
+        "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
+        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
+        "dex_tool": attrs.string(default = "d8"),  # Match default in V1
+        "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
+        "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
+        "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
+        "min_sdk_version": attrs.option(attrs.int(), default = None),
+        "module_manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
+        "_android_toolchain": android_toolchain(),
+        "_dex_toolchain": _dex_toolchain(),
+        "_is_building_android_binary": attrs.default_only(attrs.bool(default = True)),
+        "_is_force_single_cpu": attrs.default_only(attrs.bool(default = FORCE_SINGLE_CPU)),
+        "_is_force_single_default_cpu": attrs.default_only(attrs.bool(default = FORCE_SINGLE_DEFAULT_CPU)),
+        "_java_toolchain": java_toolchain_for_android(),
+    },
     "android_instrumentation_apk": {
         "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
-        "apk": attrs.transition_dep(cfg = do_not_build_only_native_code_transition),
+        "apk": attrs.dep(),
         "cpu_filters": attrs.list(attrs.enum(TargetCpuType), default = []),
-        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition_instrumentation_test_apk), default = []),
+        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -207,6 +221,7 @@ extra_attributes = {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "resources_root": attrs.option(attrs.string(), default = None),
         "robolectric_runtime_dependencies": attrs.list(attrs.source(), default = []),
+        "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
         "_android_toolchain": android_toolchain(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
         "_is_building_android_binary": attrs.default_only(attrs.bool(default = False)),

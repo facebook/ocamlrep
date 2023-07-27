@@ -6,7 +6,7 @@ oncall("hack")
 
 rust_binary(
     name = "rust_to_ocaml",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(["rust_to_ocaml/**/*.rs"]),
     autocargo = {
         "cargo_target_config": {
             "doctest": False,
@@ -31,7 +31,7 @@ rust_binary(
 
 rust_library(
     name = "rust_to_ocaml_attr",
-    srcs = glob(["attr/**/*.rs"]),
+    srcs = glob(["rust_to_ocaml_attr/**/*.rs"]),
     autocargo = {
         "cargo_target_config": {
             "doctest": False,

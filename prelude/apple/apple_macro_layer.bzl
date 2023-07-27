@@ -9,26 +9,55 @@ load(":apple_package_config.bzl", "apple_package_config")
 load(
     ":apple_rules_impl_utility.bzl",
     "APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME",
-    "APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE_ATTR_NAME",
 )
 
-_APPLE_LIBRARY_LOCAL_EXECUTION_OVERRIDES = {
-    APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE_ATTR_NAME: ("apple", "link_libraries_locally_override"),
-    APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME: ("apple", "archive_objects_locally_override"),
-}
+AppleBuckConfigAttributeOverride = record(
+    name = field(str),
+    section = field(str, default = "apple"),
+    key = field(str),
+    positive_values = field([[str], [bool]], default = ["True", "true"]),
+    value_if_true = field([str, bool, None], default = True),
+    value_if_false = field([str, bool, None], default = False),
+    skip_if_false = field(bool, default = False),
+)
 
-_APPLE_BINARY_LOCAL_EXECUTION_OVERRIDES = {
-    "link_locally_override": ("apple", "link_binaries_locally_override"),
-}
+APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE = AppleBuckConfigAttributeOverride(
+    name = "link_execution_preference",
+    key = "link_libraries_locally_override",
+    value_if_true = "local",
+    skip_if_false = True,
+)
 
-def apple_macro_layer_set_bool_override_attrs_from_config(attrib_map: {str.type: (str.type, str.type)}) -> {str.type: "selector"}:
+APPLE_STRIPPED_OVERRIDE = AppleBuckConfigAttributeOverride(
+    name = "stripped",
+    key = "stripped_override",
+    skip_if_false = True,
+)
+
+_APPLE_LIBRARY_LOCAL_EXECUTION_OVERRIDES = [
+    APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE,
+    AppleBuckConfigAttributeOverride(name = APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME, key = "archive_objects_locally_override"),
+]
+
+_APPLE_BINARY_LOCAL_EXECUTION_OVERRIDES = [
+    AppleBuckConfigAttributeOverride(
+        name = "link_execution_preference",
+        key = "link_binaries_locally_override",
+        value_if_true = "local",
+        skip_if_false = True,
+    ),
+]
+
+def apple_macro_layer_set_bool_override_attrs_from_config(overrides: list[AppleBuckConfigAttributeOverride.type]) -> dict[str, "selector"]:
     attribs = {}
-    for (attrib_name, (config_section, config_key)) in attrib_map.items():
-        config_value = read_config(config_section, config_key, None)
+    for override in overrides:
+        config_value = read_root_config(override.section, override.key, None)
         if config_value != None:
-            config_truth_value = config_value.lower() == "true"
-            attribs[attrib_name] = select({
-                "DEFAULT": config_truth_value,
+            config_is_true = config_value in override.positive_values
+            if not config_is_true and override.skip_if_false:
+                continue
+            attribs[override.name] = select({
+                "DEFAULT": override.value_if_true if config_is_true else override.value_if_false,
                 # Do not set attribute value for host tools
                 "ovr_config//platform/macos/constraints:execution-platform-transitioned": None,
             })
@@ -36,10 +65,12 @@ def apple_macro_layer_set_bool_override_attrs_from_config(attrib_map: {str.type:
 
 def apple_library_macro_impl(apple_library_rule = None, **kwargs):
     kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config(_APPLE_LIBRARY_LOCAL_EXECUTION_OVERRIDES))
+    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_OVERRIDE]))
     apple_library_rule(**kwargs)
 
 def apple_binary_macro_impl(apple_binary_rule = None, **kwargs):
     kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config(_APPLE_BINARY_LOCAL_EXECUTION_OVERRIDES))
+    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_OVERRIDE]))
     apple_binary_rule(**kwargs)
 
 def apple_package_macro_impl(apple_package_rule = None, **kwargs):

@@ -11,16 +11,12 @@ load(
     "LinkedObject",  # @unused Used as a type
 )
 load("@prelude//linking:strip.bzl", "strip_shared_library")
-load(
-    "@prelude//utils:types.bzl",
-    "unchecked",  # @unused Used as a type
-)
 
 SharedLibrary = record(
     lib = field(LinkedObject.type),
     stripped_lib = field(["artifact", None]),
-    can_be_asset = field(bool.type),
-    for_primary_apk = field(bool.type),
+    can_be_asset = field(bool),
+    for_primary_apk = field(bool),
     label = field("label"),
 )
 
@@ -29,7 +25,7 @@ SharedLibraries = record(
     # Since the SONAME is what the dynamic loader uses to uniquely identify
     # libraries, using this as the key allows easily detecting conflicts from
     # dependencies.
-    libraries = field({str.type: SharedLibrary.type}),
+    libraries = field({str: SharedLibrary.type}),
 )
 
 # T-set of SharedLibraries
@@ -41,9 +37,15 @@ SharedLibraryInfo = provider(fields = [
     "set",  # [SharedLibrariesTSet.type, None]
 ])
 
+def _get_strip_non_global_flags(cxx_toolchain: CxxToolchainInfo.type) -> list:
+    if cxx_toolchain.strip_flags_info and cxx_toolchain.strip_flags_info.strip_non_global_flags:
+        return cxx_toolchain.strip_flags_info.strip_non_global_flags
+
+    return ["--strip-unneeded"]
+
 def create_shared_libraries(
-        ctx: "context",
-        libraries: {str.type: LinkedObject.type}) -> SharedLibraries.type:
+        ctx: AnalysisContext,
+        libraries: dict[str, LinkedObject.type]) -> SharedLibraries.type:
     """
     Take a mapping of dest -> src and turn it into a mapping that will be
     passed around in providers. Used for both srcs, and resources.
@@ -56,7 +58,7 @@ def create_shared_libraries(
                 ctx,
                 cxx_toolchain[CxxToolchainInfo],
                 shlib.output,
-                cmd_args(["--strip-unneeded"]),
+                cmd_args(_get_strip_non_global_flags(cxx_toolchain[CxxToolchainInfo])),
             ) if cxx_toolchain != None else None,
             can_be_asset = getattr(ctx.attrs, "can_be_asset", False) or False,
             for_primary_apk = getattr(ctx.attrs, "used_by_wrap_script", False),
@@ -66,8 +68,10 @@ def create_shared_libraries(
 
 # We do a lot of merging library maps, so don't use O(n) type annotations
 def _merge_lib_map(
-        dest_mapping: unchecked({str.type: SharedLibrary.type}),
-        mapping_to_merge: unchecked({str.type: SharedLibrary.type})) -> None:
+        # {str: SharedLibrary.type}
+        dest_mapping,
+        # {str: SharedLibrary.type}
+        mapping_to_merge) -> None:
     """
     Merges a mapping_to_merge into `dest_mapping`. Fails if different libraries
     map to the same name.
@@ -99,7 +103,7 @@ def _merge_lib_map(
 def merge_shared_libraries(
         actions: "actions",
         node: ["SharedLibraries", None] = None,
-        deps: ["SharedLibraryInfo"] = []) -> "SharedLibraryInfo":
+        deps: list["SharedLibraryInfo"] = []) -> "SharedLibraryInfo":
     kwargs = {}
 
     children = filter(None, [dep.set for dep in deps])
@@ -112,7 +116,7 @@ def merge_shared_libraries(
     return SharedLibraryInfo(set = set)
 
 def traverse_shared_library_info(
-        info: "SharedLibraryInfo"):  # -> {str.type: SharedLibrary.type}:
+        info: "SharedLibraryInfo"):  # -> {str: SharedLibrary.type}:
     libraries = {}
     if info.set:
         for libs in info.set.traverse():

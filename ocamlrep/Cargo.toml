@@ -18,4 +18,4 @@ bumpalo = { version = "3.11.1", features = ["collections"] }
 indexmap = { version = "1.9.2", features = ["arbitrary", "rayon", "serde-1"] }
 ocamlrep_derive = { path = "../ocamlrep_derive" }
 rustc-hash = "1.1.0"
-serde = { version = "1.0.136", features = ["derive", "rc"] }
+serde = { version = "1.0.176", features = ["derive", "rc"] }

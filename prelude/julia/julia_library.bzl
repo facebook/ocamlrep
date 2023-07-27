@@ -8,7 +8,7 @@
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo")
 load(":julia_info.bzl", "JllInfo", "JuliaLibraryInfo", "create_julia_library_info")
 
-def gather_dep_libraries(raw_deps: ["dependency"]):
+def gather_dep_libraries(raw_deps: list[Dependency]):
     """
     Takes a list of raw dependencies, and partitions them into julia_library / shared library providers.
     Fails if a dependency is not one of these.
@@ -21,7 +21,7 @@ def gather_dep_libraries(raw_deps: ["dependency"]):
             fail("Dependency {} is not a julia_library or julia_jll_library!".format(dep.label))
     return clean_libs
 
-def strip_srcs_path(ctx: "context") -> ["string"]:
+def strip_srcs_path(ctx: AnalysisContext) -> list[str]:
     """Strip the src path to include just the module folder.
 
     By default, the short path will list the path of the src file relative to
@@ -38,11 +38,15 @@ def strip_srcs_path(ctx: "context") -> ["string"]:
     for p in toml_main:
         toml_main_path = toml_main_path + p + "/"
 
+    # If the toml file is in the current directory, then we need to account for that.
+    if toml_main_path == "":
+        toml_main_path = "./"
+
     src_labels = [f.short_path.split(toml_main_path)[-1] for f in ctx.attrs.srcs]
     src_labels += [ctx.attrs.project_toml.short_path.split(toml_main_path)[-1]]
     return src_labels
 
-def julia_library_impl(ctx: "context") -> ["provider"]:
+def julia_library_impl(ctx: AnalysisContext) -> list["provider"]:
     """Creates rule for julia libraries.
 
     The library rule needs to do a few important things:
@@ -78,7 +82,7 @@ def julia_library_impl(ctx: "context") -> ["provider"]:
 
     return providers
 
-def julia_jll_library_impl(ctx: "context") -> ["provider"]:
+def julia_jll_library_impl(ctx: AnalysisContext) -> list["provider"]:
     """Creates rule for julia jll libraries.
 
     jll libraries are wrappers for c++ libraries. Normally, these libraries are

@@ -6,18 +6,19 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load(":erlang_build.bzl", "erlang_build")
 load(":erlang_dependencies.bzl", "check_dependencies", "flatten_dependencies")
 load(":erlang_info.bzl", "ErlangAppInfo")
 load(":erlang_toolchain.bzl", "get_primary", "select_toolchains")
 load(":erlang_utils.bzl", "action_identifier", "to_term_args")
 
 def create_escript(
-        ctx: "context",
+        ctx: AnalysisContext,
         spec_file: "artifact",
         toolchain: "Toolchain",
-        files: ["artifact"],
+        files: list["artifact"],
         output: "artifact",
-        escript_name: "string") -> "NoneType":
+        escript_name: str) -> None:
     """ build the escript with the escript builder tool
     """
     script = toolchain.escript_builder
@@ -31,14 +32,16 @@ def create_escript(
     )
     escript_build_cmd.hidden(output.as_output())
     escript_build_cmd.hidden(files)
-    ctx.actions.run(
+    erlang_build.utils.run_with_env(
+        ctx,
+        toolchain,
         escript_build_cmd,
         category = "escript",
         identifier = action_identifier(toolchain, escript_name),
     )
     return None
 
-def erlang_escript_impl(ctx: "context") -> ["provider"]:
+def erlang_escript_impl(ctx: AnalysisContext) -> list["provider"]:
     # select the correct tools from the toolchain
     toolchain_name = get_primary(ctx)
     toolchain = select_toolchains(ctx)[get_primary(ctx)]
@@ -108,8 +111,8 @@ def erlang_escript_impl(ctx: "context") -> ["provider"]:
         RunInfo(escript_cmd),
     ]
 
-def _ebin_path(file: "artifact", app_name: "string") -> "string":
+def _ebin_path(file: "artifact", app_name: str) -> str:
     return paths.join(app_name, "ebin", file.basename)
 
-def _priv_path(app_name: "string") -> "string":
+def _priv_path(app_name: str) -> str:
     return paths.join(app_name, "priv")

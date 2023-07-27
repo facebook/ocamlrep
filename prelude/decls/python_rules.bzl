@@ -61,6 +61,7 @@ cxx_python_extension = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         python_common.base_module_arg() |
         cxx_common.srcs_arg() |
         cxx_common.deps_arg() |
@@ -93,7 +94,6 @@ cxx_python_extension = prelude_rule(
             "frameworks": attrs.list(attrs.string(), default = []),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
-            "labels": attrs.list(attrs.string(), default = []),
             "lang_compiler_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False, default = {}),
             "lang_platform_compiler_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False, default = {}),
             "lang_platform_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False, default = {}),
@@ -102,14 +102,13 @@ cxx_python_extension = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "module_name": attrs.option(attrs.string(), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "post_linker_flags": attrs.list(attrs.arg(), default = []),
-            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+            "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "precompiled_header": attrs.option(attrs.source(), default = None),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
             "type_stub": attrs.option(attrs.source(), default = None),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -166,6 +165,7 @@ prebuilt_python_library = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         {
             "binary_src": attrs.source(doc = """
                 The path to the `.whl` or `.egg` to use.
@@ -184,9 +184,7 @@ prebuilt_python_library = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "ignore_compile_errors": attrs.bool(default = False),
-            "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -256,6 +254,7 @@ python_binary = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         {
             "main_module": attrs.option(attrs.string(), default = None, doc = """
                 The python module that should be the entry point of the binary. This should be
@@ -293,15 +292,13 @@ python_binary = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "dummy_omnibus": attrs.option(attrs.dep(), default = None),
             "extension": attrs.option(attrs.string(), default = None),
-            "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = False)), default = []),
             "prefer_stripped_native_objects": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "zip_safe": attrs.option(attrs.bool(), default = None),
         }
     ),
@@ -381,6 +378,7 @@ python_library = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         python_common.srcs_arg() |
         python_common.platform_srcs_arg() |
         python_common.resources_arg() |
@@ -398,7 +396,6 @@ python_library = prelude_rule(
             "cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "ignore_compile_errors": attrs.bool(default = False),
-            "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "platform": attrs.option(attrs.string(), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
@@ -406,7 +403,6 @@ python_library = prelude_rule(
             "version_universe": attrs.option(attrs.string(), default = None),
             "versioned_resources": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
             "versioned_srcs": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "zip_safe": attrs.option(attrs.bool(), default = None),
         }
     ),
@@ -500,6 +496,7 @@ python_test = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         python_common.srcs_arg() |
         python_common.platform_srcs_arg() |
         python_common.resources_arg() |
@@ -536,14 +533,6 @@ python_test = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = [], doc = """
                 `python\\_library()`rules used by the tests in this rules sources.
             """),
-            "labels": attrs.list(attrs.string(), default = [], doc = """
-                A list of labels to be applied to these tests. These labels are
-                 arbitrary text strings and have no meaning within buck itself. They
-                 can, however, have meaning for you as a test author
-                 (e.g., `smoke` or `fast`). A label can be
-                 used to filter or include a specific `python_test()` rule
-                 when executing `buck test`
-            """),
         } |
         buck.test_rule_timeout_ms() |
         python_common.package_style_arg() |
@@ -563,7 +552,7 @@ python_test = prelude_rule(
             "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
             "needed_coverage": attrs.list(attrs.tuple(attrs.int(), attrs.dep(), attrs.option(attrs.string())), default = []),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
-            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
+            "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = False)), default = []),
             "prefer_stripped_native_objects": attrs.bool(default = False),
             "runner": attrs.option(attrs.dep(), default = None),
@@ -571,7 +560,6 @@ python_test = prelude_rule(
             "version_universe": attrs.option(attrs.string(), default = None),
             "versioned_resources": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
             "versioned_srcs": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "zip_safe": attrs.option(attrs.bool(), default = None),
         }
     ),
@@ -584,14 +572,13 @@ python_test_runner = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.labels_arg() |
         {
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "main_module": attrs.string(default = ""),
             "src": attrs.source(),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )

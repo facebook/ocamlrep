@@ -28,6 +28,9 @@ _rust_toolchain_attrs = {
     # linking on rlib crates. The hope is that rmeta builds
     # are quick and this increases effective parallelism.
     "pipelined": False,
+    # When you `buck test` a library, also compile and run example code in its
+    # documentation comments.
+    "doctests": False,
     # Filter out failures when we just need diagnostics. That is,
     # a rule which fails with a compilation failure will report
     # success as an RE action, but a "failure filter" action will
@@ -66,12 +69,7 @@ _rust_toolchain_attrs = {
 
 RustToolchainInfo = provider(fields = _rust_toolchain_attrs.keys())
 
-# Stores "platform"/flavor name used to resolve *platform_* arguments
-RustPlatformInfo = provider(fields = [
-    "name",
-])
-
-def ctx_toolchain_info(ctx: "context") -> RustToolchainInfo.type:
+def ctx_toolchain_info(ctx: AnalysisContext) -> RustToolchainInfo.type:
     toolchain_info = ctx.attrs._rust_toolchain[RustToolchainInfo]
 
     attrs = dict()

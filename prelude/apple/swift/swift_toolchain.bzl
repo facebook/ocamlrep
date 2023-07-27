@@ -5,12 +5,12 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load(":swift_toolchain_types.bzl", "SdkUncompiledModuleInfo", "SwiftToolchainInfo")
+load(":swift_toolchain_types.bzl", "SdkUncompiledModuleInfo", "SwiftObjectFormat", "SwiftToolchainInfo")
 
 def traverse_sdk_modules_graph(
-        swift_sdk_module_name_to_deps: {str.type: "dependency"},
-        clang_sdk_module_name_to_deps: {str.type: "dependency"},
-        sdk_module_dep: "dependency"):
+        swift_sdk_module_name_to_deps: dict[str, Dependency],
+        clang_sdk_module_name_to_deps: dict[str, Dependency],
+        sdk_module_dep: Dependency):
     if SdkUncompiledModuleInfo not in sdk_module_dep:
         return
 
@@ -63,10 +63,13 @@ def swift_toolchain_impl(ctx):
             compiler = cmd_args(ctx.attrs._swiftc_wrapper[RunInfo]).add(ctx.attrs.swiftc[RunInfo]),
             compiler_flags = ctx.attrs.swiftc_flags,
             prefix_serialized_debugging_options = ctx.attrs.prefix_serialized_debug_info,
+            object_format = SwiftObjectFormat(ctx.attrs.object_format) if ctx.attrs.object_format else SwiftObjectFormat("object"),
             resource_dir = ctx.attrs.resource_dir,
             sdk_path = ctx.attrs._internal_sdk_path or ctx.attrs.sdk_path,
             swift_stdlib_tool = ctx.attrs.swift_stdlib_tool[RunInfo],
             swift_stdlib_tool_flags = ctx.attrs.swift_stdlib_tool_flags,
             runtime_run_paths = ctx.attrs.runtime_run_paths,
+            supports_swift_cxx_interoperability_mode = ctx.attrs.supports_swift_cxx_interoperability_mode,
+            supports_cxx_interop_requirement_at_import = ctx.attrs.supports_cxx_interop_requirement_at_import,
         ),
     ]

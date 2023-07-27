@@ -30,6 +30,7 @@ rust_library(
         "fbcode//common/ocaml/interop/cargo_test_utils:cargo_test_utils",
         "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
         "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:once_cell",
         "fbsource//third-party/rust:tempdir",
     ],
 )

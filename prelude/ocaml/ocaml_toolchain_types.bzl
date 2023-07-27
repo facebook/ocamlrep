@@ -56,9 +56,9 @@ OCamlLinkInfo = provider(
 # A record of an OCaml library.
 OCamlLibraryInfo = record(
     # The library target name: e.g. "`foo`"
-    name = str.type,
+    name = str,
     # The full library target: e.g. "`fbcode//...:foo`"
-    target = "label",
+    target = Label,
     # .a (C archives e.g. `libfoo_stubs.a`)
     c_libs = ["artifact"],
     # .o (Native compiler produced stubs)
@@ -86,25 +86,25 @@ OCamlLibraryInfo = record(
     # .cmti (Bytecode compiler produced typed abstract syntax trees)
     cmtis_byt = ["artifact"],
     # Compile flags for native clients who use this library.
-    include_dirs_nat = ["cmd_args"],
+    include_dirs_nat = [cmd_args],
     # Compile flags for bytecode clients who use this library.
-    include_dirs_byt = ["cmd_args"],
+    include_dirs_byt = [cmd_args],
     # Native C libs (like `libthreadsnat.a` in the compiler's `threads` package)
     native_c_libs = ["artifact"],
     # Bytecode C libs (like `libthreads.a` in the compiler's `threads` package)
     bytecode_c_libs = ["artifact"],
 )
 
-def merge_ocaml_link_infos(lis: ["OCamlLinkInfo"]) -> "OCamlLinkInfo":
+def merge_ocaml_link_infos(lis: list["OCamlLinkInfo"]) -> "OCamlLinkInfo":
     return OCamlLinkInfo(info = dedupe(flatten([li.info for li in lis])))
 
-def project_expand(value: {str.type: ["artifact"]}):
+def project_expand(value: dict[str, list["artifact"]]):
     return value["expand"]
 
-def project_ide(value: {str.type: ["artifact"]}):
+def project_ide(value: dict[str, list["artifact"]]):
     return value["ide"]
 
-def project_bytecode(value: {str.type: ["artifact"]}):
+def project_bytecode(value: dict[str, list["artifact"]]):
     return value["bytecode"]
 
 OtherOutputsTSet = transitive_set(
@@ -115,7 +115,7 @@ OtherOutputsInfo = provider(
     fields = ["info"],  # :OtherOutputsTSet
 )
 
-def merge_other_outputs_info(ctx: "context", value: {str.type: ["artifact"]}, infos: ["OtherOutputsInfo"]) -> "OtherOutputsInfo":
+def merge_other_outputs_info(ctx: AnalysisContext, value: dict[str, list["artifact"]], infos: list["OtherOutputsInfo"]) -> "OtherOutputsInfo":
     return OtherOutputsInfo(
         info =
             ctx.actions.tset(

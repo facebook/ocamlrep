@@ -7,17 +7,17 @@
 
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 
-def strip_debug_info(ctx: "context", name: str.type, obj: "artifact") -> "artifact":
+def strip_debug_info(ctx: AnalysisContext, name: str, obj: "artifact") -> "artifact":
     """
     Strip debug information from an object.
     """
     strip = get_cxx_toolchain_info(ctx).binary_utilities_info.strip
-    output = ctx.actions.declare_output("__striped_objects__", name)
+    output = ctx.actions.declare_output("__stripped_objects__", name)
     cmd = cmd_args([strip, "-S", "-o", output.as_output(), obj])
     ctx.actions.run(cmd, category = "strip_debug", identifier = name)
     return output
 
-def strip_shared_library(ctx: "context", cxx_toolchain: "CxxToolchainInfo", shared_lib: "artifact", strip_flags: "cmd_args") -> "artifact":
+def strip_shared_library(ctx: "context", cxx_toolchain: "CxxToolchainInfo", shared_lib: "artifact", strip_flags: cmd_args, category_suffix: [str, None] = None) -> "artifact":
     """
     Strip unneeded information from a shared library.
     """
@@ -30,6 +30,9 @@ def strip_shared_library(ctx: "context", cxx_toolchain: "CxxToolchainInfo", shar
     cmd.add(strip_flags)
     cmd.add([shared_lib, "-o", stripped_lib.as_output()])
 
-    ctx.actions.run(cmd, category = "strip_shared_lib", identifier = shared_lib.short_path)
+    effective_category_suffix = category_suffix if category_suffix else "shared_lib"
+    category = "strip_{}".format(effective_category_suffix)
+
+    ctx.actions.run(cmd, category = category, identifier = shared_lib.short_path)
 
     return stripped_lib

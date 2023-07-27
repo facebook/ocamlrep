@@ -41,12 +41,12 @@ load("@prelude//utils:utils.bzl", "is_any", "map_idx")
 _JAVA_OR_KOTLIN_FILE_EXTENSION = [".java", ".kt"]
 
 def _create_kotlin_sources(
-        ctx: "context",
-        srcs: ["artifact"],
-        deps: ["dependency"],
-        annotation_processor_params: [["AnnotationProcessorParams"], None],
+        ctx: AnalysisContext,
+        srcs: list["artifact"],
+        deps: list[Dependency],
+        annotation_processor_params: [list["AnnotationProcessorParams"], None],
         ksp_annotation_processor_params: ["AnnotationProcessorParams", None],
-        additional_classpath_entries: ["artifact"]) -> ("artifact", ["artifact", None], ["artifact", None]):
+        additional_classpath_entries: list["artifact"]) -> ("artifact", ["artifact", None], ["artifact", None]):
     """
     Runs kotlinc on the provided kotlin sources.
     """
@@ -211,14 +211,14 @@ def _create_kotlin_sources(
 
     return kotlinc_output, kapt_generated_sources_output, ksp_zipped_sources_output
 
-def _is_ksp_plugin(plugin: str.type) -> bool.type:
+def _is_ksp_plugin(plugin: str) -> bool:
     return "symbol-processing" in plugin
 
 def _add_plugins(
-        ctx: "context",
-        kotlinc_cmd_args: "cmd_args",
-        compile_kotlin_cmd: "cmd_args",
-        is_ksp: bool.type):
+        ctx: AnalysisContext,
+        kotlinc_cmd_args: cmd_args,
+        compile_kotlin_cmd: cmd_args,
+        is_ksp: bool):
     for plugin, plugin_options in ctx.attrs.kotlin_compiler_plugins.items():
         if _is_ksp_plugin(str(plugin)) != is_ksp:
             continue
@@ -237,8 +237,11 @@ def _add_plugins(
         if options:
             kotlinc_cmd_args.add(["-P", cmd_args(options, delimiter = ",")])
 
-def kotlin_library_impl(ctx: "context") -> ["provider"]:
+def kotlin_library_impl(ctx: AnalysisContext) -> list["provider"]:
     packaging_deps = ctx.attrs.deps + ctx.attrs.exported_deps + ctx.attrs.runtime_deps
+
+    # TODO(T107163344) this shouldn't be in kotlin_library itself, use overlays to remove it.
+    android_packageable_info = merge_android_packageable_info(ctx.label, ctx.actions, packaging_deps)
     if ctx.attrs._build_only_native_code:
         shared_library_info, cxx_resource_info = create_native_providers(ctx.actions, ctx.label, packaging_deps)
         return [
@@ -249,23 +252,17 @@ def kotlin_library_impl(ctx: "context") -> ["provider"]:
             TemplatePlaceholderInfo(keyed_variables = {
                 "classpath": "unused_but_needed_for_analysis",
             }),
+            android_packageable_info,
         ]
 
     java_providers = build_kotlin_library(ctx)
-    return to_list(java_providers) + [
-        # TODO(T107163344) this shouldn't be in kotlin_library itself, use overlays to remove it.
-        merge_android_packageable_info(
-            ctx.label,
-            ctx.actions,
-            ctx.attrs.deps + ctx.attrs.exported_deps + ctx.attrs.runtime_deps,
-        ),
-    ]
+    return to_list(java_providers) + [android_packageable_info]
 
 def build_kotlin_library(
-        ctx: "context",
-        additional_classpath_entries: ["artifact"] = [],
-        bootclasspath_entries: ["artifact"] = [],
-        extra_sub_targets: dict.type = {}) -> "JavaProviders":
+        ctx: AnalysisContext,
+        additional_classpath_entries: list["artifact"] = [],
+        bootclasspath_entries: list["artifact"] = [],
+        extra_sub_targets: dict = {}) -> "JavaProviders":
     srcs = ctx.attrs.srcs
     has_kotlin_srcs = is_any(lambda src: src.extension == ".kt" or src.basename.endswith(".src.zip") or src.basename.endswith("-sources.jar"), srcs)
 
@@ -355,6 +352,7 @@ def build_kotlin_library(
                 friend_paths = ctx.attrs.friend_paths,
                 kotlin_compiler_plugins = ctx.attrs.kotlin_compiler_plugins,
                 extra_kotlinc_arguments = ctx.attrs.extra_kotlinc_arguments,
+                extra_non_source_only_abi_kotlinc_arguments = ctx.attrs.extra_non_source_only_abi_kotlinc_arguments,
             )
 
             if outputs and outputs.annotation_processor_output:
@@ -385,7 +383,13 @@ def build_kotlin_library(
             )
             extra_sub_targets = extra_sub_targets | class_to_src_map_sub_targets
 
-            default_info = get_default_info(outputs, extra_sub_targets = extra_sub_targets)
+            default_info = get_default_info(
+                ctx.actions,
+                ctx.attrs._java_toolchain[JavaToolchainInfo],
+                outputs,
+                java_packaging_info,
+                extra_sub_targets = extra_sub_targets,
+            )
             return JavaProviders(
                 java_library_info = java_library_info,
                 java_library_intellij_info = intellij_info,

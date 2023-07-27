@@ -363,7 +363,7 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
         }
     }
 
-    unsafe fn parse_header(&mut self, mut h: *mut MarshalHeader) {
+    unsafe fn parse_header(&mut self, h: *mut MarshalHeader) {
         (*h).magic = self.read32u();
         match (*h).magic {
             MAGIC_NUMBER_SMALL => {

@@ -40,7 +40,7 @@ load("@prelude//utils:utils.bzl", "expect", "flatten")
 #
 # There is also an `android_app_modularity` rule that just prints out details of the Voltron
 # module graph and is used for any subsequent verification.
-def android_app_modularity_impl(ctx: "context") -> ["provider"]:
+def android_app_modularity_impl(ctx: AnalysisContext) -> list["provider"]:
     if ctx.attrs._build_only_native_code:
         return [
             # Add an unused default output in case this target is used as an attr.source() anywhere.
@@ -59,8 +59,8 @@ def android_app_modularity_impl(ctx: "context") -> ["provider"]:
     cmd, output = _get_base_cmd_and_output(
         ctx.actions,
         ctx.label,
-        android_packageable_info,
-        traversed_shared_library_info,
+        [android_packageable_info],
+        traversed_shared_library_info.values(),
         ctx.attrs._android_toolchain[AndroidToolchainInfo],
         ctx.attrs.application_module_configs,
         ctx.attrs.application_module_dependencies,
@@ -89,24 +89,25 @@ def android_app_modularity_impl(ctx: "context") -> ["provider"]:
 
     return [DefaultInfo(default_output = output)]
 
-def get_target_to_module_mapping(ctx: "context", deps: ["dependency"]) -> ["artifact", None]:
+def get_target_to_module_mapping(ctx: AnalysisContext, deps_by_platform: dict[str, list[Dependency]]) -> ["artifact", None]:
     if not ctx.attrs.application_module_configs:
         return None
 
-    all_deps = deps + flatten(ctx.attrs.application_module_configs.values())
-    android_packageable_info = merge_android_packageable_info(ctx.label, ctx.actions, all_deps)
-
-    shared_library_info = merge_shared_libraries(
-        ctx.actions,
-        deps = filter(None, [x.get(SharedLibraryInfo) for x in all_deps]),
-    )
-    traversed_shared_library_info = traverse_shared_library_info(shared_library_info)
+    android_packageable_infos = []
+    shared_libraries = []
+    for deps in deps_by_platform.values() + [flatten(ctx.attrs.application_module_configs.values())]:
+        android_packageable_infos.append(merge_android_packageable_info(ctx.label, ctx.actions, deps))
+        shared_library_info = merge_shared_libraries(
+            ctx.actions,
+            deps = filter(None, [x.get(SharedLibraryInfo) for x in deps]),
+        )
+        shared_libraries.extend(traverse_shared_library_info(shared_library_info).values())
 
     cmd, output = _get_base_cmd_and_output(
         ctx.actions,
         ctx.label,
-        android_packageable_info,
-        traversed_shared_library_info,
+        android_packageable_infos,
+        shared_libraries,
         ctx.attrs._android_toolchain[AndroidToolchainInfo],
         ctx.attrs.application_module_configs,
         ctx.attrs.application_module_dependencies,
@@ -121,19 +122,23 @@ def get_target_to_module_mapping(ctx: "context", deps: ["dependency"]) -> ["arti
 
 def _get_base_cmd_and_output(
         actions: "actions",
-        label: "label",
-        android_packageable_info: "AndroidPackageableInfo",
-        traversed_shared_library_info: {str.type: "SharedLibrary"},
+        label: Label,
+        android_packageable_infos: list["AndroidPackageableInfo"],
+        shared_libraries: list["SharedLibrary"],
         android_toolchain: "AndroidToolchainInfo",
-        application_module_configs: {str.type: ["dependency"]},
-        application_module_dependencies: [{str.type: [str.type]}, None],
-        application_module_blocklist: [[["dependency"]], None]) -> ("cmd_args", "artifact"):
-    deps_infos = list(android_packageable_info.deps.traverse()) if android_packageable_info.deps else []
-    deps_map = {deps_info.name: deps_info.deps for deps_info in deps_infos}
+        application_module_configs: dict[str, list[Dependency]],
+        application_module_dependencies: [dict[str, list[str]], None],
+        application_module_blocklist: [list[list[Dependency]], None]) -> (cmd_args, "artifact"):
+    deps_map = {}
+    for android_packageable_info in android_packageable_infos:
+        if android_packageable_info.deps:
+            for deps_info in android_packageable_info.deps.traverse():
+                deps = deps_map.setdefault(deps_info.name, [])
+                deps_map[deps_info.name] = dedupe(deps + deps_info.deps)
 
     target_graph_file = actions.write_json("target_graph.json", deps_map)
     application_module_configs_map = {
-        module_name: [seed.label.raw_target() for seed in seeds if seed.get(AndroidPackageableInfo)]
+        module_name: [seed.get(AndroidPackageableInfo).target_label for seed in seeds if seed.get(AndroidPackageableInfo)]
         for module_name, seeds in application_module_configs.items()
     }
     application_module_configs_file = actions.write_json("application_module_configs.json", application_module_configs_map)
@@ -156,10 +161,9 @@ def _get_base_cmd_and_output(
 
     # Anything that is used by a wrap script needs to go into the primary APK, as do all
     # of their deps.
-
-    used_by_wrap_script_libs = [str(shared_lib.label.raw_target()) for shared_lib in traversed_shared_library_info.values() if shared_lib.for_primary_apk]
-    prebuilt_native_library_dirs = list(android_packageable_info.prebuilt_native_library_dirs.traverse()) if android_packageable_info.prebuilt_native_library_dirs else []
-    prebuilt_native_library_targets_for_primary_apk = [str(native_lib_dir.raw_target) for native_lib_dir in prebuilt_native_library_dirs if native_lib_dir.for_primary_apk]
+    used_by_wrap_script_libs = [str(shared_lib.label.raw_target()) for shared_lib in shared_libraries if shared_lib.for_primary_apk]
+    prebuilt_native_library_dirs = flatten([list(android_packageable_info.prebuilt_native_library_dirs.traverse()) if android_packageable_info.prebuilt_native_library_dirs else [] for android_packageable_info in android_packageable_infos])
+    prebuilt_native_library_targets_for_primary_apk = dedupe([str(native_lib_dir.raw_target) for native_lib_dir in prebuilt_native_library_dirs if native_lib_dir.for_primary_apk])
     if application_module_blocklist or used_by_wrap_script_libs or prebuilt_native_library_targets_for_primary_apk:
         all_blocklisted_deps = used_by_wrap_script_libs + prebuilt_native_library_targets_for_primary_apk
         if application_module_blocklist:
@@ -178,25 +182,25 @@ def _get_base_cmd_and_output(
 
 ROOT_MODULE = "dex"
 
-def is_root_module(module: str.type) -> bool.type:
+def is_root_module(module: str) -> bool:
     return module == ROOT_MODULE
 
-def all_targets_in_root_module(_module: str.type) -> str.type:
+def all_targets_in_root_module(_module: str) -> str:
     return ROOT_MODULE
 
 APKModuleGraphInfo = record(
-    module_list = [str.type],
+    module_list = [str],
     target_to_module_mapping_function = "function",
     module_to_canary_class_name_function = "function",
     module_to_module_deps_function = "function",
 )
 
 def get_root_module_only_apk_module_graph_info() -> APKModuleGraphInfo.type:
-    def root_module_canary_class_name(module: str.type):
+    def root_module_canary_class_name(module: str):
         expect(is_root_module(module))
         return "secondary"
 
-    def root_module_deps(module: str.type):
+    def root_module_deps(module: str):
         expect(is_root_module(module))
         return []
 
@@ -208,7 +212,7 @@ def get_root_module_only_apk_module_graph_info() -> APKModuleGraphInfo.type:
     )
 
 def get_apk_module_graph_info(
-        ctx: "context",
+        ctx: AnalysisContext,
         apk_module_graph_file: "artifact",
         artifacts) -> APKModuleGraphInfo.type:
     apk_module_graph_lines = artifacts[apk_module_graph_file].read_string().split("\n")
@@ -232,15 +236,15 @@ def get_apk_module_graph_info(
         target, module = line.split(" ")
         target_to_module_mapping[target] = module
 
-    def target_to_module_mapping_function(raw_target: str.type) -> str.type:
+    def target_to_module_mapping_function(raw_target: str) -> str:
         mapped_module = target_to_module_mapping.get(raw_target)
         expect(mapped_module != None, "No module found for target {}!".format(raw_target))
         return mapped_module
 
-    def module_to_canary_class_name_function(voltron_module: str.type) -> str.type:
+    def module_to_canary_class_name_function(voltron_module: str) -> str:
         return module_to_canary_class_name_map.get(voltron_module)
 
-    def module_to_module_deps_function(voltron_module: str.type) -> list.type:
+    def module_to_module_deps_function(voltron_module: str) -> list:
         return module_to_module_deps_map.get(voltron_module)
 
     return APKModuleGraphInfo(

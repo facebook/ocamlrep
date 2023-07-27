@@ -22,12 +22,12 @@ RustFailureFilter = provider(fields = [
 # the action will succeed with those artifacts as outputs. Otherwise it fails.
 # Either way it streams whatever stderr content there is to stream.
 def failure_filter(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
-        prefix: str.type,
+        prefix: str,
         predecl_out: ["artifact", None],
         failprov: "RustFailureFilter",
-        short_cmd: str.type) -> "artifact":
+        short_cmd: str) -> "artifact":
     toolchain_info = compile_ctx.toolchain_info
     failure_filter_action = toolchain_info.failure_filter_action
 

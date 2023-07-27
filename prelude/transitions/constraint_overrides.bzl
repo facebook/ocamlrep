@@ -5,23 +5,10 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-# NOTE: Currently, constraints can't be propagated via rule attrs and so need
-# to be hard-coded here.
-_CONSTRAINTS = [
-    "ovr_config//third-party/cuda/constraints:11.0.2",
-    "ovr_config//third-party/cuda/constraints:11.4.2",
-    "ovr_config//third-party/cuda/constraints:11.8.0",
-    "ovr_config//third-party/cuda/constraints:12",
-    "ovr_config//third-party/pypi/transformers/constraints:3.4.0",
-    "ovr_config//third-party/pypi/transformers/constraints:4.26.0",
-    "ovr_config//third-party/python/constraints:3.10",
-    "ovr_config//third-party/python/constraints:3.10.cinder",
-    "ovr_config//third-party/python/constraints:3.8",
-    "ovr_config//third-party/python/constraints:cinder.3.8",
-    "ovr_config//third-party/zstd/constraints:1.4.x",
-    "ovr_config//third-party/zstd/constraints:1.4.x-tp2",
-]
+# @oss-disable: load("@prelude//meta_only:product_constraints.bzl", _PRODUCT_CONSTRAINTS = "constraints") 
+# @oss-disable: load("@prelude//meta_only:third_party_version_constraints.bzl", _VERSION_CONSTRAINTS = "constraints") 
 
+# @oss-disable: _CONSTRAINTS = _PRODUCT_CONSTRAINTS + _VERSION_CONSTRAINTS 
 _CONSTRAINTS = [] # @oss-enable
 
 # Apparently, `==` doesn't do value comparison for `ConstraintValueInfo`, so

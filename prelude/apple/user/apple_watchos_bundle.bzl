@@ -37,7 +37,6 @@ def _apple_bundle_base_attrs():
         "resource_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
         "skip_copying_swift_stdlib": attrs.option(attrs.bool(), default = None),
         "try_skip_code_signing": attrs.option(attrs.bool(), default = None),
-        "within_view": attrs.option(attrs.list(attrs.string()), default = None),
         "xcode_product_type": attrs.option(attrs.string(), default = None),
     }
 
@@ -47,7 +46,7 @@ def _apple_watchos_bundle_attrs():
     attributes.update(apple_bundle_extra_attrs())
     return attributes
 
-def apple_watchos_bundle_impl(ctx: "context") -> ["provider"]:
+def apple_watchos_bundle_impl(ctx: AnalysisContext) -> list["provider"]:
     # This rule is _equivalent_ to `apple_bundle` except it applies
     # an incoming watchOS transition.
     return apple_bundle_impl(ctx)

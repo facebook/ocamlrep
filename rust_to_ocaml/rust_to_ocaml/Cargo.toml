@@ -10,17 +10,17 @@ license = "MIT"
 
 [[bin]]
 name = "rust_to_ocaml"
-path = "../src/rust_to_ocaml.rs"
+path = "rust_to_ocaml.rs"
 test = false
 
 [dependencies]
-anyhow = "1.0.65"
+anyhow = "1.0.71"
 attr_parser = { path = "../attr_parser" }
-clap = { version = "3.2.23", features = ["derive", "env", "regex", "unicode", "wrap_help"] }
+clap = { version = "3.2.25", features = ["derive", "env", "regex", "unicode", "wrap_help"] }
 convert_case = "0.4.0"
 derive_more = "0.99.17"
 indexmap = { version = "1.9.2", features = ["arbitrary", "rayon", "serde-1"] }
-serde = { version = "1.0.136", features = ["derive", "rc"] }
+serde = { version = "1.0.176", features = ["derive", "rc"] }
 signed_source = { path = "../../signed_source" }
-syn = { version = "1.0.102", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-toml = "=0.5.8"
+syn = { version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+toml = "0.7.3"

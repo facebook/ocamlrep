@@ -5,12 +5,15 @@
 
 use ocamlrep::*;
 use ocamlrep_custom::CustomOperations;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Communicates that when the wrapped i64 is converted to an OCaml
 /// representation, the type `Int64.t` (representing a boxed 64-bit integer)
 /// should be used rather than the type `int` (which, on 64-bit architectures,
 /// is an unboxed 63-bit integer).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize)]
 pub struct Int64(pub i64);
 
 extern "C" {

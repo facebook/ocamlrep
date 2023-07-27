@@ -12,7 +12,7 @@
 
 def _srcs_arg():
     return {
-        "srcs": attrs.named_set(attrs.source(), sorted = False, default = [], doc = """
+        "srcs": attrs.named_set(attrs.source(allow_directory = True), sorted = False, default = [], doc = """
     Either a list or a map of the source files which Buck makes available to the shell
      command at the path in the `SRCDIR` environment variable.
      If you specify a list, the source files are the names in the list.
@@ -160,7 +160,7 @@ def _bash_arg():
         "bash": attrs.option(attrs.arg(), default = None, doc = """
     A platform-specific version of the shell command parameter `cmd`.
      It runs on Linux and UNIX systems—including OSX—on which `bash` is installed.
-     It has a higher priority than `cmd`. The `bash` argument is run with `/bin/bash -c`.
+     It has a higher priority than `cmd`. The `bash` argument is run with `/usr/bin/env bash -c`.
      It has access to the same set of macros and variables as the `cmd` argument.
 """),
     }

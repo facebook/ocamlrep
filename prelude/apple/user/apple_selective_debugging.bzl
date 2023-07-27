@@ -6,19 +6,39 @@
 # of this source tree.
 
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
+load(
+    "@prelude//linking:execution_preference.bzl",
+    "LinkExecutionPreference",
+    "LinkExecutionPreferenceDeterminatorInfo",
+    "LinkExecutionPreferenceInfo",  # @unused Used as a type
+    "get_action_execution_attributes",
+)
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
 load(
     "@prelude//utils:build_target_pattern.bzl",
+    "BuildTargetPattern",  # @unused Used as a type
     "parse_build_target_pattern",
+)
+load(
+    "@prelude//utils:utils.bzl",
+    "is_any",
+)
+
+_SelectionCriteria = record(
+    include_build_target_patterns = field([BuildTargetPattern.type], []),
+    include_regular_expressions = field(["regex"], []),
+    exclude_build_target_patterns = field([BuildTargetPattern.type], []),
+    exclude_regular_expressions = field(["regex"], []),
 )
 
 AppleSelectiveDebuggingInfo = provider(fields = [
     "scrub_binary",  # function
-    "include_build_target_patterns",  # BuildTargetPattern.type
-    "include_regular_expressions",  # regex
-    "exclude_build_target_patterns",  # BuildTargetPattern.type
-    "exclude_regular_expressions",  # regex
+    "filter",  # function
 ])
+
+AppleSelectiveDebuggingFilteredDebugInfo = record(
+    map = field({"label": ["artifact"]}),
+)
 
 # The type of selective debugging json input to utilze.
 _SelectiveDebuggingJsonTypes = [
@@ -29,12 +49,11 @@ _SelectiveDebuggingJsonTypes = [
     "spec",
 ]
 
-_SelectiveDebuggingJsonType = enum(
-    _SelectiveDebuggingJsonTypes[0],
-    _SelectiveDebuggingJsonTypes[1],
-)
+_SelectiveDebuggingJsonType = enum(*_SelectiveDebuggingJsonTypes)
 
-def _impl(ctx: "context") -> ["provider"]:
+_LOCAL_LINK_THRESHOLD = 0.2
+
+def _impl(ctx: AnalysisContext) -> list["provider"]:
     json_type = _SelectiveDebuggingJsonType(ctx.attrs.json_type)
 
     # process inputs and provide them up the graph with typing
@@ -64,23 +83,72 @@ def _impl(ctx: "context") -> ["provider"]:
     else:
         fail("Expected json_type to be either `targets` or `spec`.")
 
-    def scrub_binary(inner_ctx, executable: "artifact") -> "artifact":
+    selection_criteria = _SelectionCriteria(
+        include_build_target_patterns = include_build_target_patterns,
+        include_regular_expressions = include_regular_expressions,
+        exclude_build_target_patterns = exclude_build_target_patterns,
+        exclude_regular_expressions = exclude_regular_expressions,
+    )
+
+    def scrub_binary(inner_ctx, executable: "artifact", executable_link_execution_preference: LinkExecutionPreference.type, adhoc_codesign_tool: ["RunInfo", None]) -> "artifact":
         inner_cmd = cmd_args(cmd)
         output = inner_ctx.actions.declare_output("debug_scrubbed/{}".format(executable.short_path))
+
+        action_execution_properties = get_action_execution_attributes(executable_link_execution_preference)
+
+        # If we're provided a codesign tool, provider it to the scrubber binary so that it may sign
+        # the binary after scrubbing.
+        if adhoc_codesign_tool:
+            inner_cmd.add(["--adhoc-codesign-tool", adhoc_codesign_tool])
         inner_cmd.add(["--input", executable])
         inner_cmd.add(["--output", output.as_output()])
-        inner_ctx.actions.run(inner_cmd, category = "scrub_binary", identifier = executable.short_path)
+        inner_ctx.actions.run(
+            inner_cmd,
+            category = "scrub_binary",
+            identifier = executable.short_path,
+            prefer_local = action_execution_properties.prefer_local,
+            prefer_remote = action_execution_properties.prefer_remote,
+            local_only = action_execution_properties.local_only,
+            force_full_hybrid_if_capable = action_execution_properties.full_hybrid,
+        )
         return output
+
+    def filter_debug_info(debug_info: "transitive_set_iterator") -> AppleSelectiveDebuggingFilteredDebugInfo.type:
+        map = {}
+        for infos in debug_info:
+            for info in infos:
+                if _is_label_included(info.label, selection_criteria):
+                    map[info.label] = info.artifacts
+
+        return AppleSelectiveDebuggingFilteredDebugInfo(map = map)
+
+    def preference_for_links(links: list[Label], deps_preferences: list[LinkExecutionPreferenceInfo.type]) -> LinkExecutionPreference.type:
+        # If any dependent links were run locally, prefer that the current link is also performed locally,
+        # to avoid needing to upload the previous link.
+        dep_prefered_local = is_any(lambda info: info.preference == LinkExecutionPreference("local"), deps_preferences)
+        if dep_prefered_local:
+            return LinkExecutionPreference("local")
+
+        # If we're not provided a list of links, we can't make an informed determination.
+        if not links:
+            return LinkExecutionPreference("any")
+
+        matching_links = filter(None, [link for link in links if _is_label_included(link, selection_criteria)])
+
+        # If more than 20% of targets being linked are also downloaded for debugging, perform the
+        # link locally, as we'd need to download the object files anyway (and can skip downloading the link output).
+        # Otherwise, perform the link remotely, and we'll just download the debug data separately.
+        if len(matching_links) / len(links) >= _LOCAL_LINK_THRESHOLD:
+            return LinkExecutionPreference("local")
+        return LinkExecutionPreference("remote")
 
     return [
         DefaultInfo(),
         AppleSelectiveDebuggingInfo(
             scrub_binary = scrub_binary,
-            include_build_target_patterns = include_build_target_patterns,
-            include_regular_expressions = include_regular_expressions,
-            exclude_build_target_patterns = exclude_build_target_patterns,
-            exclude_regular_expressions = exclude_regular_expressions,
+            filter = filter_debug_info,
         ),
+        LinkExecutionPreferenceDeterminatorInfo(preference_for_links = preference_for_links),
     ]
 
 registration_spec = RuleRegistrationSpec(
@@ -97,19 +165,16 @@ registration_spec = RuleRegistrationSpec(
     },
 )
 
-def filter_debug_info(debug_info: "transitive_set_iterator", selective_debugging_info: AppleSelectiveDebuggingInfo.type) -> ["artifact"]:
-    selected_debug_info = []
-    for info in debug_info:
-        if selective_debugging_info.include_build_target_patterns or selective_debugging_info.include_regular_expressions:
-            is_included = _check_if_label_matches_patterns_or_expressions(info.label, selective_debugging_info.include_build_target_patterns, selective_debugging_info.include_regular_expressions)
-        else:
-            is_included = True
+def _is_label_included(label: Label, selection_criteria: _SelectionCriteria.type) -> bool:
+    # If no include criteria are provided, we then include everything, as long as it is not excluded.
+    if selection_criteria.include_build_target_patterns or selection_criteria.include_regular_expressions:
+        if not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.include_build_target_patterns, selection_criteria.include_regular_expressions):
+            return False
 
-        if is_included and not _check_if_label_matches_patterns_or_expressions(info.label, selective_debugging_info.exclude_build_target_patterns, selective_debugging_info.exclude_regular_expressions):
-            selected_debug_info.extend(info.artifacts)
-    return selected_debug_info
+    # If included (above snippet), ensure that this target is not excluded.
+    return not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.exclude_build_target_patterns, selection_criteria.exclude_regular_expressions)
 
-def _check_if_label_matches_patterns_or_expressions(label: "label", patterns: ["BuildTargetPattern"], expressions: ["regex"]) -> bool.type:
+def _check_if_label_matches_patterns_or_expressions(label: Label, patterns: list["BuildTargetPattern"], expressions: list["regex"]) -> bool:
     for pattern in patterns:
         if pattern.matches(label):
             return True

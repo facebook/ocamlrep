@@ -10,13 +10,14 @@ Rule for the inplace pex builder, and some utility methods for generic pex build
 execution
 """
 
+load("@prelude//:artifact_tset.bzl", "project_artifacts")
 load("@prelude//:local_only.bzl", "package_python_locally")
-load("@prelude//cxx:debug.bzl", "project_external_debug_info")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkedObject",  # @unused Used as a type
 )
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
+load(":compile.bzl", "PycInvalidationMode")
 load(":interface.bzl", "PythonLibraryManifestsInterface")
 load(":manifest.bzl", "ManifestInfo")  # @unused Used as a type
 load(":toolchain.bzl", "PackageStyle", "PythonToolchainInfo")
@@ -28,23 +29,23 @@ PexModules = record(
     manifests = field(PythonLibraryManifestsInterface.type),
     extensions = field([ManifestInfo.type, None], None),
     extra_manifests = field([ManifestInfo.type, None], None),
-    compile = field(bool.type, False),
+    compile = field(bool, False),
 )
 
 # The output of pex creation. It's everything needed to make the DefaultInfo and RunInfo
 # providers.
 PexProviders = record(
     default_output = field("artifact"),
-    other_outputs = [("_arglike", str.type)],
-    other_outputs_prefix = [str.type, None],
+    other_outputs = [("_arglike", str)],
+    other_outputs_prefix = [str, None],
     hidden_resources = [("_arglike")],
-    sub_targets = {str.type: ["provider"]},
+    sub_targets = {str: ["provider"]},
     run_cmd = cmd_args.type,
 )
 
 def make_pex_providers(
         python_toolchain: PythonToolchainInfo.type,
-        pex: PexProviders.type) -> ["provider"]:
+        pex: PexProviders.type) -> list["provider"]:
     providers = [
         make_default_info(pex),
         make_run_info(pex),
@@ -59,6 +60,7 @@ def make_install_info(installer: "_arglike", pex: PexProviders.type) -> "provide
         "{}{}".format(prefix, path): artifact
         for artifact, path in pex.other_outputs
         if path != pex.other_outputs_prefix  # don't include prefix dir
+        if path != ""  # HACK: skip artifacts without a path
     }
     files[pex.default_output.basename] = pex.default_output
     return InstallInfo(
@@ -76,16 +78,16 @@ def make_default_info(pex: PexProviders.type) -> "provider":
 def make_run_info(pex: PexProviders.type) -> "provider":
     return RunInfo(pex.run_cmd)
 
-def _srcs(srcs: [""], format = "{}") -> "cmd_args":
+def _srcs(srcs: list[""], format = "{}") -> cmd_args:
     args = cmd_args()
     for src in srcs:
         args.add(cmd_args(src, format = format))
     return args
 
 def _fail_at_build_time(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: "PythonToolchainInfo",
-        msg: str.type) -> PexProviders.type:
+        msg: str) -> PexProviders.type:
     error_message = ctx.actions.write("__error_message", msg)
     dummy_output = ctx.actions.declare_output("__dummy_output")
     cmd = cmd_args([
@@ -104,10 +106,10 @@ def _fail_at_build_time(
     )
 
 def _fail(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: "PythonToolchainInfo",
-        suffix: str.type,
-        msg: str.type) -> PexProviders.type:
+        suffix: str,
+        msg: str) -> PexProviders.type:
     if suffix:
         return _fail_at_build_time(ctx, python_toolchain, msg)
 
@@ -120,16 +122,16 @@ def _fail(
 #                 invocations. It might be perfectly reasonable to just have a wrapper
 #                 script that invokes make_xar in a slightly different way.
 def make_pex(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: "PythonToolchainInfo",
         # A rule-provided tool to use to build the PEX.
         make_pex_cmd: [RunInfo.type, None],
         package_style: PackageStyle.type,
-        build_args: ["_arglike"],
+        build_args: list["_arglike"],
         pex_modules: PexModules.type,
-        shared_libraries: {str.type: (LinkedObject.type, bool.type)},
-        main_module: str.type,
-        hidden_resources: [None, ["_arglike"]]) -> PexProviders.type:
+        shared_libraries: dict[str, (LinkedObject.type, bool)],
+        main_module: str,
+        hidden_resources: [None, list["_arglike"]]) -> PexProviders.type:
     """
     Passes a standardized set of flags to a `make_pex` binary to create a python
     "executable".
@@ -192,20 +194,20 @@ def make_pex(
     return default
 
 def _make_pex_impl(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: "PythonToolchainInfo",
         make_pex_cmd: [RunInfo.type, None],
         package_style: PackageStyle.type,
-        build_args: ["_arglike"],
-        shared_libraries: {str.type: (LinkedObject.type, bool.type)},
-        preload_libraries: "cmd_args",
-        common_modules_args: "cmd_args",
-        dep_artifacts: [("_arglike", str.type)],
-        main_module: str.type,
-        hidden_resources: [None, ["_arglike"]],
+        build_args: list["_arglike"],
+        shared_libraries: dict[str, (LinkedObject.type, bool)],
+        preload_libraries: cmd_args,
+        common_modules_args: cmd_args,
+        dep_artifacts: list[("_arglike", str)],
+        main_module: str,
+        hidden_resources: [None, list["_arglike"]],
         manifest_module: [None, "_arglike"],
         pex_modules: PexModules.type,
-        output_suffix: str.type) -> PexProviders.type:
+        output_suffix: str) -> PexProviders.type:
     name = "{}{}".format(ctx.attrs.name, output_suffix)
     standalone = package_style == PackageStyle("standalone")
 
@@ -247,6 +249,7 @@ def _make_pex_impl(
         symlink_tree_path,
         manifest_module,
         pex_modules,
+        output_suffix,
     )
 
     output = ctx.actions.declare_output("{}{}".format(name, python_toolchain.pex_extension))
@@ -316,7 +319,7 @@ def _make_pex_impl(
         run_cmd = cmd_args(run_args).hidden([a for a, _ in runtime_files] + hidden_resources),
     )
 
-def _preload_libraries_args(ctx: "context", shared_libraries: {str.type: (LinkedObject.type, bool.type)}) -> "cmd_args":
+def _preload_libraries_args(ctx: AnalysisContext, shared_libraries: dict[str, (LinkedObject.type, bool)]) -> cmd_args:
     preload_libraries_path = ctx.actions.write(
         "__preload_libraries.txt",
         cmd_args([
@@ -329,14 +332,14 @@ def _preload_libraries_args(ctx: "context", shared_libraries: {str.type: (Linked
 
 def _pex_bootstrap_args(
         python_interpreter: "_arglike",
-        python_interpreter_flags: [None, str.type],
+        python_interpreter_flags: [None, str],
         python_host_interpreter: "_arglike",
-        main_module: str.type,
+        main_module: str,
         output: "artifact",
-        shared_libraries: {str.type: (LinkedObject.type, bool.type)},
-        preload_libraries: "cmd_args",
+        shared_libraries: dict[str, (LinkedObject.type, bool)],
+        preload_libraries: cmd_args,
         symlink_tree_path: [None, "artifact"],
-        package_style: PackageStyle.type) -> "cmd_args":
+        package_style: PackageStyle.type) -> cmd_args:
     cmd = cmd_args()
     cmd.add(preload_libraries)
     cmd.add([
@@ -360,11 +363,12 @@ def _pex_bootstrap_args(
     return cmd
 
 def _pex_modules_common_args(
-        ctx: "context",
+        ctx: AnalysisContext,
         pex_modules: PexModules.type,
-        shared_libraries: {str.type: LinkedObject.type}) -> ("cmd_args", [("_arglike", str.type)]):
+        shared_libraries: dict[str, LinkedObject.type]) -> (cmd_args, list[("_arglike", str)]):
     srcs = []
     src_artifacts = []
+    deps = []
 
     srcs.extend(pex_modules.manifests.src_manifests())
     src_artifacts.extend(pex_modules.manifests.src_artifacts_with_paths())
@@ -377,8 +381,9 @@ def _pex_modules_common_args(
         srcs.append(pex_modules.extra_manifests.manifest)
         src_artifacts.extend(pex_modules.extra_manifests.artifacts)
 
+    deps.extend(src_artifacts)
     resources = pex_modules.manifests.resource_manifests()
-    resource_artifacts = pex_modules.manifests.resource_artifacts_with_paths()
+    deps.extend(pex_modules.manifests.resource_artifacts_with_paths())
 
     src_manifests_path = ctx.actions.write(
         "__src_manifests.txt",
@@ -409,43 +414,42 @@ def _pex_modules_common_args(
     cmd.add(cmd_args(native_library_srcs_args, format = "@{}"))
     cmd.add(cmd_args(native_library_dests_path, format = "@{}"))
 
-    dwp = []
     if ctx.attrs.package_split_dwarf_dwp:
-        dwp = [s.dwp for s in shared_libraries.values() if s.dwp != None]
+        dwp = [(s.dwp, "{}.dwp".format(n)) for n, s in shared_libraries.items() if s.dwp != None]
         dwp_srcs_path = ctx.actions.write(
             "__dwp___srcs.txt",
-            _srcs(dwp, format = "--dwp-src={}"),
+            _srcs([src for src, _ in dwp], format = "--dwp-src={}"),
         )
         dwp_dests_path = ctx.actions.write(
             "__dwp___dests.txt",
-            ["--dwp-dest={}.dwp".format(lib) for lib, s in shared_libraries.items() if s.dwp != None],
+            _srcs([dest for _, dest in dwp], format = "--dwp-dest={}"),
         )
         dwp_srcs_args = cmd_args(dwp_srcs_path)
         cmd.add(cmd_args(dwp_srcs_args, format = "@{}"))
         cmd.add(cmd_args(dwp_dests_path, format = "@{}"))
 
-    debuginfos = []
-    for name, lib in shared_libraries.items():
-        if lib.external_debug_info != None:
-            for debuginfo in project_external_debug_info(ctx.actions, ctx.label, [lib.external_debug_info]):
-                debuginfos.append((debuginfo, name))
+        deps.extend(dwp)
 
-    deps = (
-        src_artifacts +
-        resource_artifacts +
-        [(lib.output, name) for name, lib in shared_libraries.items()] +
-        [(lib.dwp, name) for name, lib in shared_libraries.items() if lib.dwp != None] +
-        debuginfos
+    deps.extend([(lib.output, name) for name, lib in shared_libraries.items()])
+
+    external_debug_info = project_artifacts(
+        ctx.actions,
+        [lib.external_debug_info for lib in shared_libraries.values()],
     )
+
+    # HACK: exclude external_debug_info from InstallInfo by providing an empty path
+    deps.extend([(d, "") for d in external_debug_info])
+
     return (cmd, deps)
 
 def _pex_modules_args(
-        ctx: "context",
-        common_args: "cmd_args",
-        dep_artifacts: [("_arglike", str.type)],
+        ctx: AnalysisContext,
+        common_args: cmd_args,
+        dep_artifacts: list[("_arglike", str)],
         symlink_tree_path: [None, "artifact"],
         manifest_module: ["_arglike", None],
-        pex_modules: PexModules.type) -> "cmd_args":
+        pex_modules: PexModules.type,
+        output_suffix: str) -> cmd_args:
     """
     Produces args to deal with a PEX's modules. Returns args to pass to the
     modules builder, and artifacts the resulting modules would require at
@@ -458,29 +462,31 @@ def _pex_modules_args(
     if manifest_module != None:
         cmd.add(cmd_args(manifest_module, format = "--module-manifest={}"))
 
+    if pex_modules.compile:
+        pyc_mode = PycInvalidationMode("UNCHECKED_HASH") if symlink_tree_path == None else PycInvalidationMode("CHECKED_HASH")
+        bytecode_manifests = pex_modules.manifests.bytecode_manifests(pyc_mode)
+        dep_artifacts.extend(pex_modules.manifests.bytecode_artifacts_with_paths(pyc_mode))
+
+        bytecode_manifests_path = ctx.actions.write(
+            "__bytecode_manifests{}.txt".format(output_suffix),
+            _srcs(
+                bytecode_manifests,
+                format = "--module-manifest={}",
+            ),
+        )
+        cmd.add(cmd_args(bytecode_manifests_path, format = "@{}"))
+        cmd.hidden(bytecode_manifests)
+
     if symlink_tree_path != None:
         cmd.add(["--modules-dir", symlink_tree_path.as_output()])
     else:
-        if pex_modules.compile:
-            bytecode_manifests = pex_modules.manifests.bytecode_manifests()
-            bytecode_manifests_path = ctx.actions.write(
-                "__bytecode_manifests.txt",
-                _srcs(
-                    bytecode_manifests,
-                    format = "--module-manifest={}",
-                ),
-            )
-            cmd.add(cmd_args(bytecode_manifests_path, format = "@{}"))
-            cmd.hidden(bytecode_manifests)
-            dep_artifacts.extend(pex_modules.manifests.bytecode_artifacts_with_paths())
-
         # Accumulate all the artifacts we depend on. Only add them to the command
         # if we are not going to create symlinks.
         cmd.hidden([a for a, _ in dep_artifacts])
 
     return cmd
 
-def _hidden_resources_error_message(current_target: "label", hidden_resources) -> str.type:
+def _hidden_resources_error_message(current_target: Label, hidden_resources) -> str:
     """
     Friendlier error message about putting non-python resources into standalone bins
     """
@@ -514,9 +520,9 @@ def _hidden_resources_error_message(current_target: "label", hidden_resources) -
     return msg
 
 def generate_manifest_module(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo.type,
-        src_manifests: ["_arglike"]) -> ["_arglike", None]:
+        src_manifests: list["_arglike"]) -> ["_arglike", None]:
     """
     Generates a __manifest__.py module, and an extra entry to add to source manifests.
 

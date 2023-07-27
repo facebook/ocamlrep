@@ -6,13 +6,19 @@
 # of this source tree.
 
 load(
+    "@prelude//linking:link_info.bzl",
+    "LinkStyle",
+)
+load(
     "@prelude//utils:utils.bzl",
     "expect",
+    "map_val",
+    "value_or",
 )
 load(":compile.bzl", "compile", "get_filtered_srcs")
 load(":link.bzl", "link")
 
-def go_binary_impl(ctx: "context") -> ["provider"]:
+def go_binary_impl(ctx: AnalysisContext) -> list["provider"]:
     lib = compile(
         ctx,
         "main",
@@ -20,7 +26,14 @@ def go_binary_impl(ctx: "context") -> ["provider"]:
         deps = ctx.attrs.deps,
         compile_flags = ctx.attrs.compiler_flags,
     )
-    (bin, runtime_files) = link(ctx, lib, deps = ctx.attrs.deps, link_mode = ctx.attrs.link_mode)
+    (bin, runtime_files) = link(
+        ctx,
+        lib,
+        deps = ctx.attrs.deps,
+        link_style = value_or(map_val(LinkStyle, ctx.attrs.link_style), LinkStyle("static")),
+        linker_flags = ctx.attrs.linker_flags,
+        link_mode = ctx.attrs.link_mode,
+    )
 
     hidden = []
     for resource in ctx.attrs.resources:

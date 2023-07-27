@@ -7,7 +7,13 @@
 
 load("@prelude//:resources.bzl", "ResourceInfo", "gather_resources")
 load(
+    "@prelude//android:android_providers.bzl",
+    "merge_android_packageable_info",
+)
+load("@prelude//cxx:cxx_toolchain_types.bzl", "PicBehavior")
+load(
     "@prelude//cxx:linker.bzl",
+    "PDB_SUB_TARGET",
     "get_default_shared_library_name",
 )
 load(
@@ -29,6 +35,7 @@ load(
     "Linkage",
     "LinkedObject",
     "MergedLinkInfo",
+    "STATIC_LINK_STYLES",
     "SharedLibLinkable",
     "create_merged_link_info",
     "get_actual_link_style",
@@ -86,7 +93,7 @@ load(
 load(":resources.bzl", "rust_attr_resources")
 load(":targets.bzl", "targets")
 
-def prebuilt_rust_library_impl(ctx: "context") -> ["provider"]:
+def prebuilt_rust_library_impl(ctx: AnalysisContext) -> list["provider"]:
     providers = []
 
     # Default output.
@@ -106,6 +113,7 @@ def prebuilt_rust_library_impl(ctx: "context") -> ["provider"]:
             transitive_deps = tdeps,
             rmeta = ctx.attrs.rlib,
             transitive_rmeta_deps = tmetadeps,
+            pdb = None,
         )
     providers.append(
         RustLinkInfo(
@@ -130,6 +138,7 @@ def prebuilt_rust_library_impl(ctx: "context") -> ["provider"]:
     providers.append(
         create_merged_link_info(
             ctx,
+            PicBehavior("supported"),
             {link_style: LinkInfos(default = link) for link_style in LinkStyle},
             exported_deps = [d[MergedLinkInfo] for d in ctx.attrs.deps],
             # TODO(agallagher): This matches v1 behavior, but some of these libs
@@ -156,9 +165,11 @@ def prebuilt_rust_library_impl(ctx: "context") -> ["provider"]:
 
     providers.append(merge_link_group_lib_info(deps = ctx.attrs.deps))
 
+    providers.append(merge_android_packageable_info(ctx.label, ctx.actions, ctx.attrs.deps))
+
     return providers
 
-def rust_library_impl(ctx: "context") -> ["provider"]:
+def rust_library_impl(ctx: AnalysisContext) -> list["provider"]:
     compile_ctx = compile_context(ctx)
     toolchain_info = compile_ctx.toolchain_info
 
@@ -179,12 +190,12 @@ def rust_library_impl(ctx: "context") -> ["provider"]:
             # in the check subtarget. The link style doesn't matter
             # so pick the first.
             if check_artifacts == None:
-                check_artifacts = {"check": meta.outputs[Emit("metadata")]}
+                check_artifacts = {"check": meta.output}
                 check_artifacts.update(meta.diag)
 
             rust_param_artifact[params] = _handle_rust_artifact(ctx, params, link, meta)
         elif lang == LinkageLang("c++"):
-            native_param_artifact[params] = link.outputs[Emit("link")]
+            native_param_artifact[params] = link.output
         else:
             fail("Unhandled lang {}".format(lang))
 
@@ -211,8 +222,12 @@ def rust_library_impl(ctx: "context") -> ["provider"]:
         document_private_items = False,
     )
 
+    # If doctests=True or False is set on the individual target, respect that.
+    # Otherwise look at the global setting on the toolchain.
+    doctests_enabled = ctx.attrs.doctests if ctx.attrs.doctests != None else toolchain_info.doctests
+
     rustdoc_test = None
-    if ctx.attrs.doctests and toolchain_info.rustc_target_triple == targets.exec_triple(ctx):
+    if doctests_enabled and toolchain_info.rustc_target_triple == targets.exec_triple(ctx):
         if ctx.attrs.doctest_link_style:
             doctest_link_style = LinkStyle(ctx.attrs.doctest_link_style)
         else:
@@ -257,7 +272,7 @@ def rust_library_impl(ctx: "context") -> ["provider"]:
         rustdoc = rustdoc,
         rustdoc_test = rustdoc_test,
         check_artifacts = check_artifacts,
-        expand = expand.outputs[Emit("expand")],
+        expand = expand.output,
         sources = compile_ctx.symlinked_srcs,
     )
     providers += _rust_providers(
@@ -272,19 +287,22 @@ def rust_library_impl(ctx: "context") -> ["provider"]:
         param_artifact = native_param_artifact,
     )
 
+    deps = [dep.dep for dep in resolve_deps(ctx)]
     providers.append(ResourceInfo(resources = gather_resources(
         label = ctx.label,
         resources = rust_attr_resources(ctx),
-        deps = [dep.dep for dep in resolve_deps(ctx)],
+        deps = deps,
     )))
+
+    providers.append(merge_android_packageable_info(ctx.label, ctx.actions, deps))
 
     return providers
 
 def _build_params_for_styles(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type) -> (
-    {BuildParams.type: [LinkageLang.type]},
-    {(LinkageLang.type, LinkStyle.type): BuildParams.type},
+    dict[BuildParams.type, list[LinkageLang.type]],
+    dict[(LinkageLang.type, LinkStyle.type), BuildParams.type],
 ):
     """
     For a given rule, return two things:
@@ -328,11 +346,9 @@ def _build_params_for_styles(
     return (param_lang, style_param)
 
 def _build_library_artifacts(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
-        param_lang: {BuildParams.type: [LinkageLang.type]}) -> {
-    (LinkageLang.type, BuildParams.type): (RustcOutput.type, RustcOutput.type),
-}:
+        param_lang: dict[BuildParams.type, list[LinkageLang.type]]) -> dict[(LinkageLang.type, BuildParams.type), (RustcOutput.type, RustcOutput.type)]:
     """
     Generate the actual actions to build various output artifacts. Given the set
     parameters we need, return a mapping to the linkable and metadata artifacts.
@@ -360,7 +376,7 @@ def _build_library_artifacts(
     return param_artifact
 
 def _handle_rust_artifact(
-        ctx: "context",
+        ctx: AnalysisContext,
         params: BuildParams.type,
         link: RustcOutput.type,
         meta: RustcOutput.type) -> RustLinkStyleInfo.type:
@@ -379,37 +395,32 @@ def _handle_rust_artifact(
 
     if not ctx.attrs.proc_macro:
         return RustLinkStyleInfo(
-            rlib = link.outputs[Emit("link")],
+            rlib = link.output,
             transitive_deps = tdeps,
-            rmeta = meta.outputs[Emit("metadata")],
+            rmeta = meta.output,
             transitive_rmeta_deps = tmetadeps,
+            pdb = link.pdb,
         )
     else:
         # Proc macro deps are always the real thing
         return RustLinkStyleInfo(
-            rlib = link.outputs[Emit("link")],
+            rlib = link.output,
             transitive_deps = tdeps,
-            rmeta = link.outputs[Emit("link")],
+            rmeta = link.output,
             transitive_rmeta_deps = tdeps,
+            pdb = link.pdb,
         )
 
 def _default_providers(
-        ctx: "context",
-        lang_style_param: {(LinkageLang.type, LinkStyle.type): BuildParams.type},
-        param_artifact: {BuildParams.type: RustLinkStyleInfo.type},
+        ctx: AnalysisContext,
+        lang_style_param: dict[(LinkageLang.type, LinkStyle.type), BuildParams.type],
+        param_artifact: dict[BuildParams.type, RustLinkStyleInfo.type],
         rustdoc: "artifact",
-        rustdoc_test: ["cmd_args", None],
-        check_artifacts: {str.type: "artifact"},
+        rustdoc_test: [cmd_args, None],
+        check_artifacts: dict[str, "artifact"],
         expand: "artifact",
-        sources: "artifact") -> ["provider"]:
-    # Outputs indexed by LinkStyle
-    style_info = {
-        link_style: param_artifact[lang_style_param[(LinkageLang("rust"), link_style)]]
-        for link_style in LinkStyle
-    }
-
-    # Add provider for default output, and for each link-style...
-    targets = {k.value: v.rlib for (k, v) in style_info.items()}
+        sources: "artifact") -> list["provider"]:
+    targets = {}
     targets.update(check_artifacts)
     targets["sources"] = sources
     targets["expand"] = expand
@@ -419,10 +430,27 @@ def _default_providers(
         for (k, v) in targets.items()
     }
 
+    # Add provider for default output, and for each link-style...
+    for link_style in LinkStyle:
+        link_style_info = param_artifact[lang_style_param[(LinkageLang("rust"), link_style)]]
+        nested_sub_targets = {}
+        if link_style_info.pdb:
+            nested_sub_targets[PDB_SUB_TARGET] = [DefaultInfo(default_output = link_style_info.pdb)]
+        sub_targets[link_style.value] = [DefaultInfo(
+            default_output = link_style_info.rlib,
+            sub_targets = nested_sub_targets,
+        )]
+
     providers = []
 
     if rustdoc_test:
-        doc_env = dict(ctx.attrs.doc_env)
+        # Pass everything in env + doc_env, except ones with value None in doc_env.
+        doc_env = dict(ctx.attrs.env)
+        for k, v in ctx.attrs.doc_env.items():
+            if v == None:
+                doc_env.pop(k, None)
+            else:
+                doc_env[k] = v
         doc_env["RUSTC_BOOTSTRAP"] = "1"  # for `-Zunstable-options`
 
         rustdoc_test_info = ExternalRunnerTestInfo(
@@ -446,9 +474,9 @@ def _default_providers(
     return providers
 
 def _rust_providers(
-        ctx: "context",
-        lang_style_param: {(LinkageLang.type, LinkStyle.type): BuildParams.type},
-        param_artifact: {BuildParams.type: RustLinkStyleInfo.type}) -> ["provider"]:
+        ctx: AnalysisContext,
+        lang_style_param: dict[(LinkageLang.type, LinkStyle.type), BuildParams.type],
+        param_artifact: dict[BuildParams.type, RustLinkStyleInfo.type]) -> list["provider"]:
     """
     Return the set of providers for Rust linkage.
     """
@@ -490,10 +518,10 @@ def _rust_providers(
     return providers
 
 def _native_providers(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
-        lang_style_param: {(LinkageLang.type, LinkStyle.type): BuildParams.type},
-        param_artifact: {BuildParams.type: "artifact"}) -> ["provider"]:
+        lang_style_param: dict[(LinkageLang.type, LinkStyle.type), BuildParams.type],
+        param_artifact: dict[BuildParams.type, "artifact"]) -> list["provider"]:
     """
     Return the set of providers needed to link Rust as a dependency for native
     (ie C/C++) code, along with relevant dependencies.
@@ -521,7 +549,7 @@ def _native_providers(
 
     link_infos = {}
     for link_style, arg in libraries.items():
-        if link_style in [LinkStyle("static"), LinkStyle("static_pic")]:
+        if link_style in STATIC_LINK_STYLES:
             link_infos[link_style] = LinkInfos(default = LinkInfo(linkables = [ArchiveLinkable(archive = Archive(artifact = arg), linker_type = linker_type)]))
         else:
             link_infos[link_style] = LinkInfos(default = LinkInfo(linkables = [SharedLibLinkable(lib = arg)]))
@@ -531,6 +559,7 @@ def _native_providers(
     # Native link provider.
     providers.append(create_merged_link_info(
         ctx,
+        compile_ctx.cxx_toolchain_info.pic_behavior,
         link_infos,
         exported_deps = [inherited_non_rust_link],
         preferred_linkage = preferred_linkage,
@@ -543,7 +572,7 @@ def _native_providers(
     shlib_name = get_default_shared_library_name(linker_info, ctx.label)
 
     # Only add a shared library if we generated one.
-    if get_actual_link_style(LinkStyle("shared"), preferred_linkage) == LinkStyle("shared"):
+    if get_actual_link_style(LinkStyle("shared"), preferred_linkage, compile_ctx.cxx_toolchain_info.pic_behavior) == LinkStyle("shared"):
         solibs[shlib_name] = LinkedObject(output = libraries[LinkStyle("shared")])
 
     # Native shared library provider.
@@ -608,7 +637,7 @@ def _native_providers(
     return providers
 
 # Compute transitive deps. Caller decides whether this is necessary.
-def _compute_transitive_deps(ctx: "context", link_style: LinkStyle.type) -> ({"artifact": CrateName.type}, {"artifact": CrateName.type}):
+def _compute_transitive_deps(ctx: AnalysisContext, link_style: LinkStyle.type) -> (dict["artifact", CrateName.type], dict["artifact", CrateName.type]):
     transitive_deps = {}
     transitive_rmeta_deps = {}
     for dep in resolve_deps(ctx):

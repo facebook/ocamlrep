@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//android:android_providers.bzl", "merge_android_packageable_info")
+load("@prelude//java/utils:java_utils.bzl", "get_classpath_subtarget")
 load(
     ":java_providers.bzl",
     "JavaClasspathEntry",
@@ -14,7 +15,7 @@ load(
 )
 load(":java_toolchain.bzl", "PrebuiltJarToolchainInfo")
 
-def prebuilt_jar_impl(ctx: "context") -> ["provider"]:
+def prebuilt_jar_impl(ctx: AnalysisContext) -> list["provider"]:
     """
      prebuilt_jar() rule implementation
 
@@ -62,7 +63,7 @@ def prebuilt_jar_impl(ctx: "context") -> ["provider"]:
     # TODO(T107163344) this shouldn't be in prebuilt_jar itself, use overlays to remove it.
     android_packageable_info = merge_android_packageable_info(ctx.label, ctx.actions, ctx.attrs.deps)
 
-    sub_targets = {}
+    sub_targets = get_classpath_subtarget(ctx.actions, java_packaging_info)
     sub_targets["abi"] = [
         java_library_info,
         template_placeholder_info,

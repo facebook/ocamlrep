@@ -19,17 +19,15 @@ load(
     "Group",
     "GroupAttrs",
     "GroupMapping",
-    "GroupRoot",
     "Traversal",
-    "compute_mappings",
 )
 load("@prelude//cxx:headers.bzl", "cxx_get_regular_cxx_headers_layout")
 load(
     "@prelude//cxx:link_groups.bzl",
     "LinkGroupInfo",  # @unused Used as a type
     "LinkGroupLibSpec",
+    "build_link_group_info",
     "get_link_group_info",
-    "make_link_group_info",
 )
 load("@prelude//cxx:linker.bzl", "get_rpath_origin")
 load(
@@ -42,10 +40,12 @@ load(
 load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
+    "CPreprocessorArgs",
     "cxx_inherited_preprocessor_infos",
 )
 load(
     "@prelude//linking:link_info.bzl",
+    "Linkage",
     "LinkedObject",  # @unused Used as a type
 )
 load(
@@ -53,17 +53,13 @@ load(
     "LinkableGraph",
     "LinkableGraphTSet",
     "create_linkable_graph",
-    "get_linkable_graph_node_map_func",
 )
 load(
     "@prelude//linking:linkables.bzl",
     "LinkableProviders",  # @unused Used as a type
     "linkables",
 )
-load(
-    "@prelude//utils:types.bzl",
-    "unchecked",  # @unused Used as a type
-)
+load("@prelude//linking:shared_libraries.bzl", "merge_shared_libraries", "traverse_shared_library_info")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
 load("@prelude//paths.bzl", "paths")
 load("@prelude//resources.bzl", "gather_resources")
@@ -77,7 +73,6 @@ load(
     ":manifest.bzl",
     "create_dep_manifest_for_source_map",
     "create_manifest_for_extensions",
-    "create_manifest_for_source_dir",
     "create_manifest_for_source_map",
 )
 load(":native_python_util.bzl", "merge_cxx_extension_info")
@@ -89,26 +84,29 @@ load(
     "py_resources",
     "qualify_srcs",
 )
-load(":source_db.bzl", "create_source_db", "create_source_db_no_deps")
+load(":source_db.bzl", "create_dbg_source_db", "create_python_source_db_info", "create_source_db", "create_source_db_no_deps")
 load(":toolchain.bzl", "NativeLinkStrategy", "PackageStyle", "PythonPlatformInfo", "PythonToolchainInfo", "get_platform_attr")
 
 OmnibusMetadataInfo = provider(fields = ["omnibus_libs", "omnibus_graph"])
 
-def _link_strategy(ctx: "context") -> NativeLinkStrategy.type:
+def _link_strategy(ctx: AnalysisContext) -> NativeLinkStrategy.type:
     if ctx.attrs.native_link_strategy != None:
         return NativeLinkStrategy(ctx.attrs.native_link_strategy)
     return NativeLinkStrategy(ctx.attrs._python_toolchain[PythonToolchainInfo].native_link_strategy)
 
-def _package_style(ctx: "context") -> PackageStyle.type:
+def _package_style(ctx: AnalysisContext) -> PackageStyle.type:
     if ctx.attrs.package_style != None:
         return PackageStyle(ctx.attrs.package_style.lower())
     return PackageStyle(ctx.attrs._python_toolchain[PythonToolchainInfo].package_style)
 
 # We do a lot of merging extensions, so don't use O(n) type annotations
 def _merge_extensions(
-        extensions: unchecked({str.type: ("_a", "label")}),
-        incoming_label: unchecked("label"),
-        incoming_extensions: unchecked({str.type: "_a"})) -> None:
+        # {str: ("_a", "label")}
+        extensions,
+        # Label
+        incoming_label,
+        # {str: "_a"}
+        incoming_extensions) -> None:
     """
     Merges a incoming_extensions into `extensions`. Fails if duplicate dests exist.
     """
@@ -133,8 +131,8 @@ def _merge_extensions(
         extensions[extension_name] = (incoming_artifact, incoming_label)
 
 def _get_root_link_group_specs(
-        libs: [LinkableProviders.type],
-        extensions: {str.type: LinkableProviders.type}) -> [LinkGroupLibSpec.type]:
+        libs: list[LinkableProviders.type],
+        extensions: dict[str, LinkableProviders.type]) -> list[LinkGroupLibSpec.type]:
     """
     Walk the linkable graph finding dlopen-able C++ libs.
     """
@@ -155,10 +153,7 @@ def _get_root_link_group_specs(
                     name = dep.linkable_root_info.name,
                     mappings = [
                         GroupMapping(
-                            root = GroupRoot(
-                                label = dep.linkable_graph.nodes.value.label,
-                                node = dep,
-                            ),
+                            root = dep.linkable_graph.nodes.value.label,
                             traversal = Traversal("node"),
                         ),
                     ],
@@ -176,14 +171,12 @@ def _get_root_link_group_specs(
             LinkGroupLibSpec(
                 name = name,
                 is_shared_lib = False,
+                root = extension.linkable_root_info,
                 group = Group(
                     name = name,
                     mappings = [
                         GroupMapping(
-                            root = GroupRoot(
-                                label = extension.linkable_graph.nodes.value.label,
-                                node = extension,
-                            ),
+                            root = extension.linkable_graph.nodes.value.label,
                             traversal = Traversal("node"),
                         ),
                     ],
@@ -197,11 +190,42 @@ def _get_root_link_group_specs(
 
     return specs
 
+def _get_shared_only_groups(shared_only_libs: list[LinkableProviders.type]) -> list[Group.type]:
+    """
+    Create link group mappings for shared-only libs that'll force the link to
+    link them dynamically.
+    """
+
+    groups = []
+
+    # Add link group specs for dlopen-able libs.
+    for dep in shared_only_libs:
+        if dep.linkable_graph == None:
+            continue
+        groups.append(
+            Group(
+                name = str(dep.linkable_graph.nodes.value.label.raw_target()),
+                mappings = [
+                    GroupMapping(
+                        root = dep.linkable_graph.nodes.value.label,
+                        traversal = Traversal("node"),
+                        preferred_linkage = Linkage("shared"),
+                    ),
+                ],
+                # TODO(@christylee): Add attributes to python dlopen-able libs
+                attrs = GroupAttrs(
+                    enable_distributed_thinlto = False,
+                ),
+            ),
+        )
+    return groups
+
 def _get_link_group_info(
-        ctx: "context",
-        link_deps: [LinkableProviders.type],
-        libs: [LinkableProviders.type],
-        extensions: {str.type: LinkableProviders.type}) -> (LinkGroupInfo.type, [LinkGroupLibSpec.type]):
+        ctx: AnalysisContext,
+        link_deps: list[LinkableProviders.type],
+        libs: list[LinkableProviders.type],
+        extensions: dict[str, LinkableProviders.type],
+        shared_only_libs: list[LinkableProviders.type]) -> (LinkGroupInfo.type, list[LinkGroupLibSpec.type]):
     """
     Return the `LinkGroupInfo` and link group lib specs to use for this binary.
     This will handle parsing the various user-specific parameters and automatic
@@ -219,8 +243,12 @@ def _get_link_group_info(
     # Add link group specs from dlopenable C++ libraries.
     root_specs = _get_root_link_group_specs(libs, extensions)
 
+    # Add link group specs for shared-only libs, which makes sure we link
+    # against them dynamically.
+    shared_groups = _get_shared_only_groups(shared_only_libs)
+
     # (Re-)build the link group info
-    if root_specs or link_group_info == None:
+    if root_specs or shared_groups or link_group_info == None:
         # We prepend the dlopen roots, so that they take precedence over
         # user-specific ones.
         link_group_specs = root_specs + link_group_specs
@@ -234,35 +262,33 @@ def _get_link_group_info(
                 children = (
                     [d.linkable_graph.nodes for d in link_deps] +
                     [d.linkable_graph.nodes for d in libs] +
-                    [d.linkable_graph.nodes for d in extensions.values()]
+                    [d.linkable_graph.nodes for d in extensions.values()] +
+                    [d.linkable_graph.nodes for d in shared_only_libs]
                 ),
             ),
         )
-        linkable_graph_node_map = get_linkable_graph_node_map_func(linkable_graph)()
 
         # We add user-defined mappings last, so that our auto-generated
         # ones get precedence (as we rely on this for things to work).
-        link_groups = [s.group for s in root_specs]
-        if link_group_info != None:
-            link_groups += link_group_info.groups
+        link_groups = [s.group for s in root_specs] + shared_groups
 
-        mappings = compute_mappings(
+        if link_group_info != None:
+            link_groups += link_group_info.groups.values()
+
+        link_group_info = build_link_group_info(
+            graph = linkable_graph,
             groups = link_groups,
-            graph_map = linkable_graph_node_map,
-        )
-        link_group_info = make_link_group_info(
-            groups = link_groups,
-            mappings = mappings,
+            min_node_count = ctx.attrs.link_group_min_binary_node_count,
         )
 
     return (link_group_info, link_group_specs)
 
 def python_executable(
-        ctx: "context",
-        main_module: str.type,
-        srcs: {str.type: "artifact"},
-        resources: {str.type: ("artifact", ["_arglike"])},
-        compile: bool.type = False) -> PexProviders.type:
+        ctx: AnalysisContext,
+        main_module: str,
+        srcs: dict[str, "artifact"],
+        resources: dict[str, ("artifact", list["_arglike"])],
+        compile: bool = False) -> PexProviders.type:
     # Returns a three tuple: the Python binary, all its potential runtime files,
     # and a provider for its source DB.
 
@@ -286,11 +312,7 @@ def python_executable(
     bytecode_manifest = None
     if srcs:
         src_manifest = create_manifest_for_source_map(ctx, "srcs", srcs)
-        bytecode_manifest = create_manifest_for_source_dir(
-            ctx,
-            "bytecode",
-            compile_manifests(ctx, [src_manifest]),
-        )
+        bytecode_manifest = compile_manifests(ctx, [src_manifest])
 
     dep_manifest = None
     python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
@@ -317,28 +339,32 @@ def python_executable(
     source_db = create_source_db(ctx, src_manifest, python_deps)
     source_db_no_deps = create_source_db_no_deps(ctx, srcs)
 
+    dbg_source_db = create_dbg_source_db(ctx, src_manifest, python_deps)
+
     exe = convert_python_library_to_executable(
         ctx,
         main_module,
         info_to_interface(library_info),
         flatten(raw_deps),
         compile,
+        dbg_source_db,
     )
     if python_toolchain.emit_dependency_metadata:
         exe.sub_targets["dep-report"] = [create_dep_report(ctx, python_toolchain, main_module, library_info)]
     if dep_manifest:
         exe.sub_targets["dep-manifest"] = [DefaultInfo(default_output = dep_manifest.manifest, other_outputs = dep_manifest.artifacts)]
     exe.sub_targets.update({
+        "dbg-source-db": [dbg_source_db],
         "source-db": [source_db],
-        "source-db-no-deps": [source_db_no_deps, library_info],
+        "source-db-no-deps": [source_db_no_deps, create_python_source_db_info(library_info.manifests)],
     })
 
     return exe
 
 def create_dep_report(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo.type,
-        main_module: str.type,
+        main_module: str,
         library_info: PythonLibraryInfo.type) -> DefaultInfo.type:
     out = ctx.actions.declare_output("dep-report.json")
     cmd = cmd_args()
@@ -351,11 +377,12 @@ def create_dep_report(
     return DefaultInfo(default_output = out)
 
 def convert_python_library_to_executable(
-        ctx: "context",
-        main_module: "string",
+        ctx: AnalysisContext,
+        main_module: str,
         library: PythonLibraryInterface.type,
-        deps: ["dependency"],
-        compile: bool.type = False) -> PexProviders.type:
+        deps: list[Dependency],
+        compile: bool = False,
+        dbg_source_db: [DefaultInfo.type, None] = None) -> PexProviders.type:
     extra = {}
 
     python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
@@ -370,7 +397,7 @@ def convert_python_library_to_executable(
     }
 
     extensions = {}
-    extra_manifests = None
+    extra_artifacts = {}
     for manifest in library.iter_manifests():
         if manifest.extensions:
             _merge_extensions(extensions, manifest.label, manifest.extensions)
@@ -408,23 +435,31 @@ def convert_python_library_to_executable(
         }
         native_libs = omnibus_libs.libraries
 
-        if python_toolchain.emit_omnibus_metadata:
-            omnibus_linked_obj = omnibus_libs.omnibus
+        omnibus_providers = []
+
+        if omnibus_libs.omnibus != None:
+            omnibus_link_result = omnibus_libs.omnibus
+            omnibus_linked_obj = omnibus_link_result.linked_object
+
+            sub_targets = {}
+            sub_targets["dwp"] = [DefaultInfo(default_output = omnibus_linked_obj.dwp if omnibus_linked_obj.dwp else None)]
+            if omnibus_link_result.linker_map_data != None:
+                sub_targets["linker-map"] = [DefaultInfo(default_output = omnibus_link_result.linker_map_data.map, other_outputs = [omnibus_link_result.linker_map_data.binary])]
+            omnibus_info = DefaultInfo(
+                default_output = omnibus_linked_obj.output,
+                sub_targets = sub_targets,
+            )
+        else:
             omnibus_info = DefaultInfo()
-            if omnibus_linked_obj:
-                omnibus_info = DefaultInfo(
-                    default_output = omnibus_linked_obj.output,
-                    sub_targets = {
-                        "dwp": [DefaultInfo(default_output = omnibus_linked_obj.dwp if omnibus_linked_obj.dwp else None)],
-                    },
-                )
-            extra["omnibus"] = [
-                omnibus_info,
+        omnibus_providers.append(omnibus_info)
+
+        if python_toolchain.emit_omnibus_metadata:
+            omnibus_providers.append(
                 OmnibusMetadataInfo(
                     omnibus_libs = omnibus_libs,
                     omnibus_graph = omnibus_graph,
                 ),
-            ]
+            )
 
             exclusion_roots = ctx.actions.write_json("omnibus/exclusion_roots.json", omnibus_libs.exclusion_roots)
             extra["omnibus-exclusion-roots"] = [DefaultInfo(default_output = exclusion_roots)]
@@ -437,6 +472,9 @@ def convert_python_library_to_executable(
 
             omnibus_graph_json = ctx.actions.write_json("omnibus_graph.json", omnibus_graph)
             extra["linkable-graph"] = [DefaultInfo(default_output = omnibus_graph_json)]
+
+        extra["omnibus"] = omnibus_providers
+
     elif _link_strategy(ctx) == NativeLinkStrategy("native"):
         executable_deps = ctx.attrs.executable_deps
         extension_info = merge_cxx_extension_info(
@@ -465,7 +503,7 @@ def convert_python_library_to_executable(
         ]
         extra_preprocessors = []
         if ctx.attrs.par_style == "native":
-            extra_preprocessors.append(CPreprocessor(args = ["-DNATIVE_PAR_STYLE=1"]))
+            extra_preprocessors.append(CPreprocessor(relative_args = CPreprocessorArgs(args = ["-DNATIVE_PAR_STYLE=1"])))
 
         # All deps inolved in the link.
         link_deps = (
@@ -478,6 +516,7 @@ def convert_python_library_to_executable(
             link_deps,
             extension_info.dlopen_deps.values(),
             extension_info.unembeddable_extensions,
+            extension_info.shared_only_libs.values(),
         )
 
         extra_binary_link_flags = []
@@ -510,6 +549,12 @@ def convert_python_library_to_executable(
             link_group_info = link_group_info,
             auto_link_group_specs = auto_link_group_specs,
             exe_category_suffix = "python_exe",
+            extra_shared_libs = traverse_shared_library_info(
+                merge_shared_libraries(
+                    actions = ctx.actions,
+                    deps = [d.shared_library_info for d in extension_info.shared_only_libs.values()],
+                ),
+            ),
             extra_link_roots = (
                 extension_info.unembeddable_extensions.values() +
                 extension_info.dlopen_deps.values() +
@@ -545,16 +590,19 @@ def convert_python_library_to_executable(
         preload_names = [paths.join("runtime", "lib", n) for n in preload_names]
 
         # TODO expect(len(executable_info.runtime_files) == 0, "OH NO THERE ARE RUNTIME FILES")
-        artifacts = dict(extension_info.artifacts)
+        extra_artifacts.update(dict(extension_info.artifacts))
         native_libs["runtime/bin/{}".format(ctx.attrs.executable_name)] = LinkedObject(
             output = executable_info.binary,
             dwp = executable_info.dwp,
         )
-        artifacts["static_extension_finder.py"] = ctx.attrs.static_extension_finder
-        extra_manifests = create_manifest_for_source_map(ctx, "extension_stubs", artifacts)
 
+        extra_artifacts["static_extension_finder.py"] = ctx.attrs.static_extension_finder
     else:
         native_libs = {name: shared_lib.lib for name, shared_lib in library.shared_libraries().items()}
+
+    if dbg_source_db:
+        extra_artifacts["dbg-db.json"] = dbg_source_db.default_outputs[0]
+    extra_manifests = create_manifest_for_source_map(ctx, "extra_manifests", extra_artifacts)
 
     # Combine sources and extensions into a map of all modules.
     pex_modules = PexModules(
@@ -595,7 +643,7 @@ def convert_python_library_to_executable(
 
     return pex
 
-def python_binary_impl(ctx: "context") -> ["provider"]:
+def python_binary_impl(ctx: AnalysisContext) -> list["provider"]:
     main_module = ctx.attrs.main_module
     if ctx.attrs.main_module != None and ctx.attrs.main != None:
         fail("Only one of main_module or main may be set. Prefer main_module as main is considered deprecated")

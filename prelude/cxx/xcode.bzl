@@ -6,15 +6,19 @@
 # of this source tree.
 
 load(
+    "@prelude//cxx:argsfiles.bzl",
+    "CompileArgsfile",  # @unused Used as a type
+)
+load(
     "@prelude//cxx:compile.bzl",
     "CxxSrcWithFlags",  # @unused Used as a type
 )
 
 def cxx_populate_xcode_attributes(
         ctx,
-        srcs: [CxxSrcWithFlags.type],
-        argsfiles_by_ext: {str.type: "artifact"},
-        product_name: str.type) -> {str.type: ""}:
+        srcs: list[CxxSrcWithFlags.type],
+        argsfiles: dict[str, CompileArgsfile.type],
+        product_name: str) -> dict[str, ""]:
     converted_srcs = {}
     for src in srcs:
         file_properties = _get_artifact_owner(src.file)
@@ -29,10 +33,8 @@ def cxx_populate_xcode_attributes(
 
     data = {
         "argsfiles_by_ext": {
-            # Enum types cannot be encoded by our JSON API.
-            # Use the str representation.
-            repr(ext).replace('\"', ""): artifact
-            for ext, artifact in argsfiles_by_ext.items()
+            ext: argsfile.file
+            for ext, argsfile in argsfiles.items()
         },
         "headers": _get_artifacts_with_owners(ctx.attrs.headers),
         "product_name": product_name,
@@ -44,13 +46,13 @@ def cxx_populate_xcode_attributes(
 
     return data
 
-def _get_artifacts_with_owners(files: "") -> {"artifact": {str.type: "label"}}:
+def _get_artifacts_with_owners(files: "") -> dict["artifact", dict[str, Label]]:
     if type(files) == "dict":
         return {artifact: _get_artifact_owner(artifact) for _, artifact in files.items()}
     else:
         return {file: _get_artifact_owner(file) for file in files}
 
-def _get_artifact_owner(file: "artifact") -> {str.type: "label"}:
+def _get_artifact_owner(file: "artifact") -> dict[str, Label]:
     if file.owner:
         return {"target": file.owner}
     else:

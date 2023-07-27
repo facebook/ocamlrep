@@ -10,7 +10,7 @@ load("@prelude//apple:apple_utility.bzl", "expand_relative_prefixed_sdk_path", "
 load(":apple_sdk_modules_utility.bzl", "SDKDepTSet", "get_compiled_sdk_deps_tset")
 load(":swift_toolchain_types.bzl", "SdkCompiledModuleInfo", "SdkUncompiledModuleInfo", "WrappedSdkCompiledModuleInfo")
 
-def get_shared_pcm_compilation_args(target: str.type, module_name: str.type) -> "cmd_args":
+def get_shared_pcm_compilation_args(target: str, module_name: str) -> cmd_args:
     cmd = cmd_args()
     cmd.add([
         "-emit-pcm",
@@ -52,7 +52,7 @@ def get_shared_pcm_compilation_args(target: str.type, module_name: str.type) -> 
 
     return cmd
 
-def _remove_path_components_from_right(path: str.type, count: int.type):
+def _remove_path_components_from_right(path: str, count: int):
     path_components = path.split("/")
     removed_path = "/".join(path_components[0:-count])
     return removed_path
@@ -87,9 +87,9 @@ def _add_sdk_module_search_path(cmd, uncompiled_sdk_module_info, apple_toolchain
     ])
 
 def get_swift_sdk_pcm_anon_targets(
-        ctx: "context",
-        uncompiled_sdk_deps: ["dependency"],
-        swift_cxx_args: [str.type]):
+        ctx: AnalysisContext,
+        uncompiled_sdk_deps: list[Dependency],
+        swift_cxx_args: list[str]):
     deps = [
         {
             "dep": uncompiled_sdk_dep,
@@ -102,8 +102,8 @@ def get_swift_sdk_pcm_anon_targets(
     ]
     return [(_swift_sdk_pcm_compilation, d) for d in deps]
 
-def _swift_sdk_pcm_compilation_impl(ctx: "context") -> ["promise", ["provider"]]:
-    def k(sdk_pcm_deps_providers) -> ["provider"]:
+def _swift_sdk_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list["provider"]]:
+    def k(sdk_pcm_deps_providers) -> list["provider"]:
         uncompiled_sdk_module_info = ctx.attrs.dep[SdkUncompiledModuleInfo]
         module_name = uncompiled_sdk_module_info.module_name
         apple_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo]

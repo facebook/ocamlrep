@@ -6,7 +6,7 @@
 # of this source tree.
 
 load("@prelude//:resources.bzl", "gather_resources")
-load("@prelude//android:aapt2_link.bzl", "get_aapt2_link")
+load("@prelude//android:aapt2_link.bzl", "get_aapt2_link", "get_module_manifest_in_proto_format")
 load("@prelude//android:android_manifest.bzl", "generate_android_manifest")
 load("@prelude//android:android_providers.bzl", "AndroidBinaryResourcesInfo", "AndroidResourceInfo", "ExopackageResourcesInfo")
 load("@prelude//android:android_resource.bzl", "aapt2_compile")
@@ -18,18 +18,18 @@ load("@prelude//utils:utils.bzl", "expect")
 load("@prelude//decls/android_rules.bzl", "RType")
 
 def get_android_binary_resources_info(
-        ctx: "context",
-        deps: ["dependency"],
+        ctx: AnalysisContext,
+        deps: list[Dependency],
         android_packageable_info: "AndroidPackageableInfo",
-        java_packaging_deps: ["JavaPackagingDep"],
-        use_proto_format: bool.type,
-        referenced_resources_lists: ["artifact"],
+        java_packaging_deps: list["JavaPackagingDep"],
+        use_proto_format: bool,
+        referenced_resources_lists: list["artifact"],
         apk_module_graph_file: ["artifact", None] = None,
-        manifest_entries: dict.type = {},
+        manifest_entries: dict = {},
         resource_infos_to_exclude: [set_type, None] = None,
-        generate_strings_and_ids_separately: [bool.type, None] = True,
-        aapt2_min_sdk: [str.type, None] = None,
-        aapt2_preferred_density: [str.type, None] = None) -> "AndroidBinaryResourcesInfo":
+        generate_strings_and_ids_separately: [bool, None] = True,
+        aapt2_min_sdk: [str, None] = None,
+        aapt2_preferred_density: [str, None] = None) -> "AndroidBinaryResourcesInfo":
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     unfiltered_resource_infos = [
         resource_info
@@ -43,18 +43,16 @@ def get_android_binary_resources_info(
     )
 
     android_manifest = _get_manifest(ctx, android_packageable_info, manifest_entries)
-    module_manifests = _get_module_manifests(ctx, android_packageable_info, manifest_entries, apk_module_graph_file)
 
-    aapt2_link_info = get_aapt2_link(
+    non_proto_format_aapt2_link_info, proto_format_aapt2_link_info = get_aapt2_link(
         ctx,
         ctx.attrs._android_toolchain[AndroidToolchainInfo],
-        [resource_info.aapt2_compile_output for resource_info in resource_infos if resource_info.aapt2_compile_output != None],
+        resource_infos,
         android_manifest,
         includes_vector_drawables = getattr(ctx.attrs, "includes_vector_drawables", False),
         no_auto_version = getattr(ctx.attrs, "no_auto_version_resources", False),
         no_version_transitions = getattr(ctx.attrs, "no_version_transitions_resources", False),
         no_auto_add_overlay = getattr(ctx.attrs, "no_auto_add_overlay_resources", False),
-        use_proto_format = use_proto_format,
         no_resource_removal = True,
         package_id_offset = 0,
         should_keep_raw_values = getattr(ctx.attrs, "aapt2_keep_raw_values", False),
@@ -67,6 +65,17 @@ def get_android_binary_resources_info(
         min_sdk = aapt2_min_sdk,
         preferred_density = aapt2_preferred_density,
     )
+
+    module_manifests = _get_module_manifests(
+        ctx,
+        android_packageable_info,
+        manifest_entries,
+        apk_module_graph_file,
+        use_proto_format,
+        non_proto_format_aapt2_link_info.primary_resources_apk,
+    )
+
+    aapt2_link_info = proto_format_aapt2_link_info if use_proto_format else non_proto_format_aapt2_link_info
 
     prebuilt_jars = [packaging_dep.jar for packaging_dep in java_packaging_deps if packaging_dep.is_prebuilt_jar]
 
@@ -103,31 +112,14 @@ def get_android_binary_resources_info(
             android_toolchain.zipalign[RunInfo],
         ]), category = "write_exo_resources")
 
-        third_party_jars = ctx.actions.write("third_party_jars", prebuilt_jars)
-        third_party_jar_resources = ctx.actions.declare_output("third_party_jars.resources")
-        third_party_jar_resources_hash = ctx.actions.declare_output("third_party_jars.resources.hash")
-        ctx.actions.run(cmd_args([
-            android_toolchain.merge_third_party_jar_resources[RunInfo],
-            "--output",
-            third_party_jar_resources.as_output(),
-            "--output-hash",
-            third_party_jar_resources_hash.as_output(),
-            "--third-party-jars",
-            third_party_jars,
-        ]).hidden(prebuilt_jars), category = "merge_third_party_jar_resources")
-
         exopackage_info = ExopackageResourcesInfo(
             assets = exopackaged_assets,
             assets_hash = exopackaged_assets_hash,
             res = exo_resources,
             res_hash = exo_resources_hash,
-            third_party_jar_resources = third_party_jar_resources,
-            third_party_jar_resources_hash = third_party_jar_resources_hash,
         )
-        jar_files_that_may_contain_resources = []
     else:
         exopackage_info = None
-        jar_files_that_may_contain_resources = prebuilt_jars
         r_dot_txt = aapt2_link_info.r_dot_txt
 
     override_symbols_paths = [override_symbols] if override_symbols else []
@@ -180,14 +172,14 @@ def get_android_binary_resources_info(
         r_dot_javas = r_dot_javas,
         string_source_map = string_source_map,
         voltron_string_source_map = voltron_string_source_map,
-        jar_files_that_may_contain_resources = jar_files_that_may_contain_resources,
+        jar_files_that_may_contain_resources = prebuilt_jars,
         unfiltered_resource_infos = unfiltered_resource_infos,
     )
 
 def _maybe_filter_resources(
-        ctx: "context",
-        resources: [AndroidResourceInfo.type],
-        android_toolchain: AndroidToolchainInfo.type) -> ([AndroidResourceInfo.type], ["artifact", None], ["artifact", None], ["artifact"]):
+        ctx: AnalysisContext,
+        resources: list[AndroidResourceInfo.type],
+        android_toolchain: AndroidToolchainInfo.type) -> (list[AndroidResourceInfo.type], ["artifact", None], ["artifact", None], list["artifact"]):
     resources_filter_strings = getattr(ctx.attrs, "resource_filter", [])
     resources_filter = _get_resources_filter(resources_filter_strings)
     resource_compression_mode = getattr(ctx.attrs, "resource_compression", "disabled")
@@ -296,7 +288,11 @@ def _maybe_filter_resources(
             override_symbols_artifact.as_output(),
         ])
 
-    ctx.actions.run(filter_resources_cmd, category = "filter_resources")
+    ctx.actions.run(
+        filter_resources_cmd,
+        local_only = "run_post_filter_resources_cmd_locally" in ctx.attrs.labels,
+        category = "filter_resources",
+    )
 
     filtered_resource_infos = []
     for i, resource in enumerate(resources):
@@ -330,11 +326,11 @@ def _maybe_filter_resources(
     )
 
 ResourcesFilter = record(
-    densities = [str.type],
-    downscale = bool.type,
+    densities = [str],
+    downscale = bool,
 )
 
-def _get_resources_filter(resources_filter_strings: [str.type]) -> [ResourcesFilter.type, None]:
+def _get_resources_filter(resources_filter_strings: list[str]) -> [ResourcesFilter.type, None]:
     if not resources_filter_strings:
         return None
 
@@ -347,10 +343,10 @@ def _get_resources_filter(resources_filter_strings: [str.type]) -> [ResourcesFil
 
 def _maybe_generate_string_source_map(
         actions: "actions",
-        should_build_source_string_map: bool.type,
-        resource_infos: [AndroidResourceInfo.type],
+        should_build_source_string_map: bool,
+        resource_infos: list[AndroidResourceInfo.type],
         android_toolchain: AndroidToolchainInfo.type,
-        is_voltron_string_source_map: bool.type = False) -> ["artifact", None]:
+        is_voltron_string_source_map: bool = False) -> ["artifact", None]:
     if not should_build_source_string_map or len(resource_infos) == 0:
         return None
 
@@ -374,9 +370,9 @@ def _maybe_generate_string_source_map(
     return output
 
 def _maybe_package_strings_as_assets(
-        ctx: "context",
+        ctx: AnalysisContext,
         string_files_list: ["artifact", None],
-        string_files_res_dirs: ["artifact"],
+        string_files_res_dirs: list["artifact"],
         r_dot_txt: "artifact",
         android_toolchain: AndroidToolchainInfo.type) -> ["artifact", None]:
     resource_compression_mode = getattr(ctx.attrs, "resource_compression", "disabled")
@@ -414,9 +410,9 @@ def _maybe_package_strings_as_assets(
     return string_assets_zip
 
 def _get_manifest(
-        ctx: "context",
+        ctx: AnalysisContext,
         android_packageable_info: "AndroidPackageableInfo",
-        manifest_entries: dict.type) -> "artifact":
+        manifest_entries: dict) -> "artifact":
     robolectric_manifest = getattr(ctx.attrs, "robolectric_manifest", None)
     if robolectric_manifest:
         return robolectric_manifest
@@ -462,10 +458,12 @@ def _get_manifest(
         return android_manifest
 
 def _get_module_manifests(
-        ctx: "context",
+        ctx: AnalysisContext,
         android_packageable_info: "AndroidPackageableInfo",
-        manifest_entries: dict.type,
-        apk_module_graph_file: ["artifact", None]) -> ["artifact"]:
+        manifest_entries: dict,
+        apk_module_graph_file: ["artifact", None],
+        use_proto_format: bool,
+        primary_resources_apk: "artifact") -> list["artifact"]:
     if not apk_module_graph_file:
         return []
 
@@ -482,7 +480,7 @@ def _get_module_manifests(
     module_manifests_dir = ctx.actions.declare_output("module_manifests_dir", dir = True)
     android_manifests = list(android_packageable_info.manifests.traverse()) if android_packageable_info.manifests else []
 
-    def get_manifests_modular(ctx: "context", artifacts, outputs):
+    def get_manifests_modular(ctx: AnalysisContext, artifacts, outputs):
         apk_module_graph_info = get_apk_module_graph_info(ctx, apk_module_graph_file, artifacts)
         get_module_from_target = apk_module_graph_info.target_to_module_mapping_function
         module_to_manifests = {}
@@ -493,6 +491,9 @@ def _get_module_manifests(
 
         merged_module_manifests = {}
         for module_name in apk_module_graph_info.module_list:
+            if is_root_module(module_name):
+                continue
+
             merged_module_manifest, _ = generate_android_manifest(
                 ctx,
                 android_toolchain.generate_manifest[RunInfo],
@@ -501,6 +502,15 @@ def _get_module_manifests(
                 module_to_manifests.get(module_name, []),
                 manifest_entries.get("placeholders", {}),
             )
+
+            if use_proto_format:
+                merged_module_manifest = get_module_manifest_in_proto_format(
+                    ctx,
+                    android_toolchain,
+                    merged_module_manifest,
+                    primary_resources_apk,
+                    module_name,
+                )
 
             merged_module_manifests["assets/{}/AndroidManifest.xml".format(module_name)] = merged_module_manifest
 
@@ -518,10 +528,10 @@ def _get_module_manifests(
 # Returns the "primary resources APK" (i.e. the resource that are packaged into the primary APK),
 # and optionally an "exopackaged assets APK" and the hash for that APK.
 def _merge_assets(
-        ctx: "context",
-        is_exopackaged_enabled_for_resources: bool.type,
+        ctx: AnalysisContext,
+        is_exopackaged_enabled_for_resources: bool,
         base_apk: "artifact",
-        resource_infos: ["AndroidResourceInfo"],
+        resource_infos: list["AndroidResourceInfo"],
         cxx_resources: ["artifact", None]) -> ("artifact", ["artifact", None], ["artifact", None]):
     assets_dirs = [resource_info.assets for resource_info in resource_infos if resource_info.assets]
     if cxx_resources != None:
@@ -553,9 +563,9 @@ def _merge_assets(
         return merged_assets_output, None, None
 
 def get_effective_banned_duplicate_resource_types(
-        duplicate_resource_behavior: str.type,
-        allowed_duplicate_resource_types: [str.type],
-        banned_duplicate_resource_types: [str.type]) -> [str.type]:
+        duplicate_resource_behavior: str,
+        allowed_duplicate_resource_types: list[str],
+        banned_duplicate_resource_types: list[str]) -> list[str]:
     if duplicate_resource_behavior == "allow_by_default":
         expect(
             len(allowed_duplicate_resource_types) == 0,
@@ -571,7 +581,7 @@ def get_effective_banned_duplicate_resource_types(
     else:
         fail("Unrecognized duplicate_resource_behavior: {}".format(duplicate_resource_behavior))
 
-def _get_cxx_resources(ctx: "context", deps: ["dependency"]) -> ["artifact", None]:
+def _get_cxx_resources(ctx: AnalysisContext, deps: list[Dependency]) -> ["artifact", None]:
     cxx_resources = gather_resources(
         label = ctx.label,
         resources = {},
@@ -586,5 +596,5 @@ def _get_cxx_resources(ctx: "context", deps: ["dependency"]) -> ["artifact", Non
 
     return ctx.actions.symlinked_dir("cxx_resources_dir", symlink_tree_dict) if symlink_tree_dict else None
 
-def _is_store_strings_as_assets(resource_compression: str.type) -> bool.type:
+def _is_store_strings_as_assets(resource_compression: str) -> bool:
     return resource_compression == "enabled_strings_only" or resource_compression == "enabled_with_strings_as_assets"

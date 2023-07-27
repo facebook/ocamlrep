@@ -5,6 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load(
+    "@prelude//linking:link_info.bzl",
+    "LinkStyle",
+)
+load(
+    "@prelude//utils:utils.bzl",
+    "map_val",
+    "value_or",
+)
 load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 load(":compile.bzl", "GoTestInfo", "compile", "get_filtered_srcs")
 load(":coverage.bzl", "GoCoverageMode", "cover_srcs")
@@ -12,11 +21,11 @@ load(":link.bzl", "link")
 load(":packages.bzl", "go_attr_pkg_name")
 
 def _gen_test_main(
-        ctx: "context",
-        pkg_name: str.type,
+        ctx: AnalysisContext,
+        pkg_name: str,
         coverage_mode: [GoCoverageMode.type, None],
-        coverage_vars: ["cmd_args", None],
-        srcs: "cmd_args") -> "artifact":
+        coverage_vars: [cmd_args, None],
+        srcs: cmd_args) -> "artifact":
     """
     Generate a `main.go` which calls tests from the given sources.
     """
@@ -35,7 +44,7 @@ def _gen_test_main(
     ctx.actions.run(cmd, category = "go_test_main_gen")
     return output
 
-def go_test_impl(ctx: "context") -> ["provider"]:
+def go_test_impl(ctx: AnalysisContext) -> list["provider"]:
     deps = ctx.attrs.deps
     srcs = ctx.attrs.srcs
     pkg_name = go_attr_pkg_name(ctx)
@@ -77,7 +86,14 @@ def go_test_impl(ctx: "context") -> ["provider"]:
     main = compile(ctx, "main", cmd_args(gen_main), pkgs = {pkg_name: tests})
 
     # Link the above into a Go binary.
-    (bin, runtime_files) = link(ctx, main, pkgs = {pkg_name: tests}, deps = deps)
+    (bin, runtime_files) = link(
+        ctx = ctx,
+        main = main,
+        pkgs = {pkg_name: tests},
+        deps = deps,
+        link_style = value_or(map_val(LinkStyle, ctx.attrs.link_style), LinkStyle("static")),
+        linker_flags = ctx.attrs.linker_flags,
+    )
 
     run_cmd = cmd_args(bin).hidden(runtime_files)
 

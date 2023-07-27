@@ -22,7 +22,8 @@
     set_state/2,
     get_state/1,
     wrap/3,
-    format_ct_error/3
+    format_ct_error/3,
+    get_hooks/0
 ]).
 
 %% gen_server callbacks
@@ -78,6 +79,10 @@ wrap(Part, Path, Fun) ->
     WrappedFun = gen_server:call(?MODULE, {wrap, Part, Fun}),
     %% apply path as closure
     fun(Config) -> WrappedFun(Path, Config) end.
+
+-spec get_hooks() -> [module()].
+get_hooks() ->
+    [get_hook_module(Hook) || Hook <- get_hooks_config()].
 
 %% @doc
 %% Starts the server within supervision tree
@@ -147,18 +152,10 @@ get_hooks_config() ->
 wrap_part(Part, Fun, State) ->
     wrap_init_end(Part, Fun, State).
 
-%% @doc This function wraps the init and end parts. The signatures are all very similar, as
-%% is the handling of the return values, and fallbacks to the old interface. This allows
-%% us to generalise this.
-%% @param Part the function to be wrapped
-%% @param Path the list of path arguments, for suite-level this is [Suite], for group-level [Suite, Group], for test level [Suite, Test]
-%% @param Config the config going in
-%% @param Fun the function to be wrapped
-%% @param State the state of the hook system
 wrap_init_end(Part, Fun, #{hooks := Hooks}) ->
     WrappedWithPreAndPost = lists:foldl(
         fun(Hook, FunToWrap) ->
-            fun(FullPathArg, ConfigArg) ->
+            fun(FullPathArg, ConfigArg0) ->
                 PathArg =
                     case level(Part) of
                         testcase ->
@@ -167,34 +164,52 @@ wrap_init_end(Part, Fun, #{hooks := Hooks}) ->
                         _ ->
                             FullPathArg
                     end,
-                case call_if_exists_with_fallback_store_state(Hook, pre(Part), PathArg ++ [ConfigArg], ok) of
+                case call_if_exists_with_fallback_store_state(Hook, pre(Part), PathArg ++ [ConfigArg0], ok) of
                     {skip, SkipReason} ->
                         {skipped, SkipReason};
                     {fail, FailReason} ->
                         {failed, FailReason};
-                    _ ->
+                    HookCallbackResult ->
+                        ConfigArg1 =
+                            case is_list(HookCallbackResult) of
+                                true ->
+                                    HookCallbackResult;
+                                false ->
+                                    %% NB. If pre(Part) is not defined in the hook we get 'ok'
+                                    ConfigArg0
+                            end,
                         %% first step of error handling for the post functions where we set tc_status
                         {PostConfig, Return} =
-                            try FunToWrap(PathArg, ConfigArg) of
+                            try FunToWrap(PathArg, ConfigArg1) of
                                 {skip, SkipReason} ->
                                     {
-                                        [{tc_status, {skipped, SkipReason}} | lists:keydelete(tc_status, 1, ConfigArg)],
+                                        [
+                                            {tc_status, {skipped, SkipReason}}
+                                            | lists:keydelete(tc_status, 1, ConfigArg1)
+                                        ],
                                         {skipped, SkipReason}
                                     };
                                 {fail, FailReason} ->
                                     {
-                                        [{tc_status, {failed, FailReason}} | lists:keydelete(tc_status, 1, ConfigArg)],
+                                        [{tc_status, {failed, FailReason}} | lists:keydelete(tc_status, 1, ConfigArg1)],
                                         {failed, FailReason}
                                     };
                                 OkResult ->
-                                    case proplists:is_defined(tc_status, ConfigArg) of
-                                        true -> {ConfigArg, OkResult};
-                                        false -> {[{tc_status, ok} | ConfigArg], OkResult}
+                                    ConfigArg2 =
+                                        case init_or_end(Part) of
+                                            init when is_list(OkResult) ->
+                                                OkResult;
+                                            _ ->
+                                                ConfigArg1
+                                        end,
+                                    case proplists:is_defined(tc_status, ConfigArg2) of
+                                        true -> {ConfigArg2, OkResult};
+                                        false -> {[{tc_status, ok} | ConfigArg2], OkResult}
                                     end
                             catch
                                 Class:Reason:Stacktrace ->
                                     Error = format_ct_error(Class, Reason, Stacktrace),
-                                    {[{tc_status, {failed, Error}} | ConfigArg], Error}
+                                    {[{tc_status, {failed, Error}} | ConfigArg1], Error}
                             end,
                         Args = PathArg ++ [PostConfig, Return],
                         call_if_exists_with_fallback_store_state(Hook, post(Part), Args, Return)
@@ -280,17 +295,17 @@ handle_post_result(Hooks, TestName, Suite, Result) ->
     end.
 
 -spec format_ct_error(throw | error | exit, Reason, Stacktrace) ->
-    {error, {thrown, Reason, Stacktrace}}
-    | {error, {Reason, Stacktrace}}
-    | {error, Reason}
+    {fail, {thrown, Reason, Stacktrace}}
+    | {fail, {Reason, Stacktrace}}
+    | {fail, Reason}
 when
     Reason :: term(), Stacktrace :: erlang:stacktrace().
 format_ct_error(throw, Reason, Stacktrace) ->
-    {error, {thrown, Reason, Stacktrace}};
+    {fail, {thrown, Reason, Stacktrace}};
 format_ct_error(error, Reason, Stacktrace) ->
-    {error, {Reason, Stacktrace}};
-format_ct_error(exit, Reason, _Stacktrace) ->
-    {error, Reason}.
+    {fail, {Reason, Stacktrace}};
+format_ct_error(exit, Reason, Stacktrace) when is_list(Stacktrace) ->
+    {fail, {exit, Reason, Stacktrace}}.
 
 -spec build_test_name(part(), [atom()]) -> test_name().
 build_test_name(init_per_suite, _Path) ->
@@ -338,13 +353,18 @@ call_if_exists(Mod, Fun, Args, Default) ->
             end
     end.
 
-call_if_exists_with_fallback(Mod, Fun, Args, Default) ->
+call_if_exists_with_fallback(Mod, Fun, Args, ReturnDefault) ->
     [_ | FallbackArgs] = Args,
-    call_if_exists(Mod, Fun, Args, {'$lazy', fun() -> call_if_exists(Mod, Fun, FallbackArgs, Default) end}).
+    call_if_exists(Mod, Fun, Args, {'$lazy', fun() -> call_if_exists(Mod, Fun, FallbackArgs, ReturnDefault) end}).
 
-call_if_exists_with_fallback_store_state({Mod, Id}, Fun, Args, Default) ->
+call_if_exists_with_fallback_store_state({Mod, Id}, Fun, Args, ReturnDefault) ->
     {ok, State} = get_state(Id),
-    CallReturn = call_if_exists_with_fallback(Mod, Fun, Args ++ [State], {Default, State}),
+    Default =
+        case Fun of
+            _ when Fun =:= on_tc_fail orelse Fun =:= on_tc_skip -> State;
+            _ -> {ReturnDefault, State}
+        end,
+    CallReturn = call_if_exists_with_fallback(Mod, Fun, Args ++ [State], Default),
     {NewReturn, NewState} =
         case Fun of
             _ when Fun =:= on_tc_fail orelse Fun =:= on_tc_skip -> {ok, CallReturn};

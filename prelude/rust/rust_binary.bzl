@@ -12,6 +12,7 @@ load(
 )
 load("@prelude//cxx:cxx_library_utility.bzl", "cxx_attr_deps")
 load("@prelude//cxx:cxx_link_utility.bzl", "executable_shared_lib_arguments")
+load("@prelude//cxx:linker.bzl", "PDB_SUB_TARGET")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkStyle",
@@ -54,15 +55,16 @@ load(
 load(":resources.bzl", "rust_attr_resources")
 
 def _rust_binary_common(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
-        default_roots: [str.type],
-        extra_flags: [str.type]) -> ([[DefaultInfo.type, RunInfo.type]], "cmd_args"):
+        default_roots: list[str],
+        extra_flags: list[str]) -> (list[[DefaultInfo.type, RunInfo.type]], cmd_args):
     toolchain_info = compile_ctx.toolchain_info
 
     simple_crate = attr_simple_crate_for_filenames(ctx)
 
     styles = {}
+    dwp_target = None
     style_param = {}  # style -> param
 
     specified_link_style = LinkStyle(ctx.attrs.link_style) if ctx.attrs.link_style else DEFAULT_STATIC_LINK_STYLE
@@ -105,7 +107,6 @@ def _rust_binary_common(
                 shared_libs[soname] = shared_lib.lib
         extra_link_args, runtime_files, _ = executable_shared_lib_arguments(
             ctx.actions,
-            ctx.label,
             compile_ctx.cxx_toolchain_info,
             output,
             shared_libs,
@@ -127,8 +128,10 @@ def _rust_binary_common(
             is_binary = True,
         )
 
-        args = cmd_args(link.outputs[Emit("link")]).hidden(runtime_files)
-        extra_targets = [("check", meta.outputs[Emit("metadata")])] + meta.diag.items()
+        args = cmd_args(link.output).hidden(runtime_files)
+        extra_targets = [("check", meta.output)] + meta.diag.items()
+        if link.pdb:
+            extra_targets.append((PDB_SUB_TARGET, link.pdb))
 
         # If we have some resources, write it to the resources JSON file and add
         # it and all resources to "runtime_files" so that we make to materialize
@@ -146,7 +149,9 @@ def _rust_binary_common(
             args.hidden(resources_hidden)
             runtime_files.extend(resources_hidden)
 
-        styles[link_style] = (link.outputs[Emit("link")], args, extra_targets, runtime_files)
+        styles[link_style] = (link.output, args, extra_targets, runtime_files)
+        if link_style == specified_link_style and link.dwp_output:
+            dwp_target = link.dwp_output
 
     expand = rust_compile(
         ctx = ctx,
@@ -167,7 +172,7 @@ def _rust_binary_common(
             default_roots = default_roots,
             document_private_items = True,
         )),
-        ("expand", expand.outputs[Emit("expand")]),
+        ("expand", expand.output),
         ("sources", compile_ctx.symlinked_srcs),
     ]
     sub_targets = {k: [DefaultInfo(default_output = v)] for k, v in extra_targets}
@@ -182,6 +187,13 @@ def _rust_binary_common(
             RunInfo(args = sub_args),
         ]
 
+    if dwp_target:
+        sub_targets["dwp"] = [
+            DefaultInfo(
+                default_output = dwp_target,
+            ),
+        ]
+
     providers = [
         DefaultInfo(
             default_output = link,
@@ -191,7 +203,7 @@ def _rust_binary_common(
     ]
     return (providers, args)
 
-def rust_binary_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type]]:
     compile_ctx = compile_context(ctx)
 
     providers, args = _rust_binary_common(
@@ -203,7 +215,7 @@ def rust_binary_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
 
     return providers + [RunInfo(args = args)]
 
-def rust_test_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type, ExternalRunnerTestInfo.type]]:
+def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type, ExternalRunnerTestInfo.type]]:
     compile_ctx = compile_context(ctx)
     toolchain_info = compile_ctx.toolchain_info
 

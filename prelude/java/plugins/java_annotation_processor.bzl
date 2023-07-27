@@ -26,19 +26,21 @@ JavaProcessorsInfo = provider(
         "deps",  # ["JavaPackagingDepTSet", None]
         "affects_abi",
         "supports_source_only_abi",
+        "isolate_class_loader",
     ],
 )
 
 AnnotationProcessorParams = record(
-    affects_abi = field(bool.type),
-    supports_source_only_abi = field(bool.type),
+    affects_abi = field(bool),
+    supports_source_only_abi = field(bool),
     processors = field(["string"]),
     params = field(["string"]),
     deps = field(["JavaPackagingDepTSet", None]),
+    isolate_class_loader = field(bool),
 )
 
 # Every transitive java annotation processors dependency has to be included into processor classpath for AP/Java Plugin run
-def derive_transitive_deps(ctx: "context", deps: ["dependency"]) -> ["JavaPackagingDepTSet", None]:
+def derive_transitive_deps(ctx: AnalysisContext, deps: list[Dependency]) -> ["JavaPackagingDepTSet", None]:
     for dep in deps:
         if not dep[JavaLibraryInfo]:
             fail("Dependency must have a type of `java_library` or `prebuilt_jar`. Deps: {}".format(deps))
@@ -49,11 +51,11 @@ def derive_transitive_deps(ctx: "context", deps: ["dependency"]) -> ["JavaPackag
     ) if deps else None
 
 def create_ap_params(
-        ctx: "context",
-        plugins: ["dependency"],
-        annotation_processors: ["string"],
-        annotation_processor_params: ["string"],
-        annotation_processor_deps: ["dependency"]) -> [AnnotationProcessorParams.type]:
+        ctx: AnalysisContext,
+        plugins: list[Dependency],
+        annotation_processors: list[str],
+        annotation_processor_params: list[str],
+        annotation_processor_deps: list[Dependency]) -> list[AnnotationProcessorParams.type]:
     ap_params = []
 
     # Extend `ap_processor_deps` with java deps from `annotation_processor_deps`
@@ -70,6 +72,7 @@ def create_ap_params(
             params = annotation_processor_params,
             # using packaging deps to have all transitive deps collected for processors classpath
             deps = derive_transitive_deps(ctx, annotation_processor_deps),
+            isolate_class_loader = False,
         ))
 
     # APs derived from `plugins` attribute
@@ -83,11 +86,12 @@ def create_ap_params(
                 processors = ap_plugin.processors,
                 params = [],
                 deps = ap_plugin.deps,
+                isolate_class_loader = ap_plugin.isolate_class_loader,
             ))
 
     return ap_params
 
-def create_ksp_ap_params(ctx: "context", plugins: ["dependency"]) -> [AnnotationProcessorParams.type, None]:
+def create_ksp_ap_params(ctx: AnalysisContext, plugins: list[Dependency]) -> [AnnotationProcessorParams.type, None]:
     ap_processors = []
     ap_processor_deps = []
 
@@ -109,15 +113,16 @@ def create_ksp_ap_params(ctx: "context", plugins: ["dependency"]) -> [Annotation
         deps = ctx.actions.tset(JavaPackagingDepTSet, children = ap_processor_deps) if ap_processor_deps else None,
         affects_abi = True,
         supports_source_only_abi = False,
+        isolate_class_loader = False,
     )
 
-def _get_processor_type(processor_class: str.type) -> JavaProcessorsType.type:
+def _get_processor_type(processor_class: str) -> JavaProcessorsType.type:
     if processor_class.startswith("KSP:"):
         return JavaProcessorsType("ksp_annotation_processor")
 
     return JavaProcessorsType("java_annotation_processor")
 
-def java_annotation_processor_impl(ctx: "context") -> ["provider"]:
+def java_annotation_processor_impl(ctx: AnalysisContext) -> list["provider"]:
     if ctx.attrs._build_only_native_code:
         return [DefaultInfo()]
 
@@ -130,6 +135,7 @@ def java_annotation_processor_impl(ctx: "context") -> ["provider"]:
             type = _get_processor_type(ctx.attrs.processor_class),
             affects_abi = not ctx.attrs.does_not_affect_abi,
             supports_source_only_abi = ctx.attrs.supports_abi_generation_from_source,
+            isolate_class_loader = ctx.attrs.isolate_class_loader,
         ),
         DefaultInfo(default_output = None, other_outputs = [packaging_dep.jar for packaging_dep in transitive_deps.traverse() if packaging_dep.jar]),
     ]

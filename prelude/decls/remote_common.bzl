@@ -19,7 +19,7 @@ def _name_arg(name_type):
 
 def _sha256_arg():
     return {
-        "sha256": attrs.string(default = "", doc = """
+        "sha256": attrs.option(attrs.string(), default = None, doc = """
     The [`SHA-256`](//wikipedia.org/wiki/SHA-2) hash of the downloaded artifact.
      Buck verifies this is correct and fails the fetch command if it doesn't match in order to
      guarantee repeatable builds.
@@ -32,6 +32,10 @@ def _urls_arg():
     A list of urls to attempt to download from. They are tried in order, and
      subsequent ones are only tried if the download fails. If validation fails,
      a new URL is not used. Supported protocols are "http", "https", and "mvn".
+"""),
+        "vpnless_urls": attrs.list(attrs.string(), default = [], doc = """
+    Additional URLs from which this resource can be downloaded when
+     off VPN. Meta-internal only.
 """),
     }
 

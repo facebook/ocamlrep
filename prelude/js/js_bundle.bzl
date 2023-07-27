@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "merge_android_packageable_info")
+load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "RESOURCE_PRIORITY_NORMAL", "merge_android_packageable_info")
 load("@prelude//android:android_resource.bzl", "JAVA_PACKAGE_FILENAME", "aapt2_compile", "get_text_symbols")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//js:js_providers.bzl", "JsBundleInfo", "JsLibraryInfo", "get_transitive_outputs")
@@ -13,9 +13,9 @@ load("@prelude//js:js_utils.bzl", "RAM_BUNDLE_TYPES", "TRANSFORM_PROFILES", "get
 load("@prelude//utils:utils.bzl", "expect", "map_idx")
 
 def _build_dependencies_file(
-        ctx: "context",
-        transform_profile: str.type,
-        flavors: [str.type],
+        ctx: AnalysisContext,
+        transform_profile: str,
+        flavors: list[str],
         transitive_js_library_outputs: "transitive_set_args_projection") -> "artifact":
     dependencies_file = ctx.actions.declare_output("{}/dependencies_file", transform_profile)
 
@@ -56,12 +56,12 @@ def _build_dependencies_file(
     return dependencies_file
 
 def _build_js_bundle(
-        ctx: "context",
-        bundle_name: str.type,
-        ram_bundle_name: str.type,
-        ram_bundle_command: str.type,
-        transform_profile: str.type,
-        flavors: [str.type],
+        ctx: AnalysisContext,
+        bundle_name: str,
+        ram_bundle_name: str,
+        ram_bundle_command: str,
+        transform_profile: str,
+        flavors: list[str],
         transitive_js_library_outputs: "transitive_set_args_projection",
         dependencies_file: "artifact") -> JsBundleInfo.type:
     base_dir = "{}_{}".format(ram_bundle_name, transform_profile) if ram_bundle_name else transform_profile
@@ -127,7 +127,7 @@ def _build_js_bundle(
         dependencies_file = dependencies_file,
     )
 
-def _get_fallback_transform_profile(ctx: "context") -> str.type:
+def _get_fallback_transform_profile(ctx: AnalysisContext) -> str:
     if ctx.attrs.fallback_transform_profile in TRANSFORM_PROFILES:
         return ctx.attrs.fallback_transform_profile
 
@@ -136,10 +136,10 @@ def _get_fallback_transform_profile(ctx: "context") -> str.type:
 
     fail("Invalid fallback_transform_profile attribute {}!".format(ctx.attrs.fallback_transform_profile))
 
-def _get_default_providers(js_bundle_info: JsBundleInfo.type) -> ["provider"]:
+def _get_default_providers(js_bundle_info: JsBundleInfo.type) -> list["provider"]:
     return [DefaultInfo(default_output = js_bundle_info.built_js)]
 
-def _get_android_resource_info(ctx: "context", js_bundle_info: JsBundleInfo.type, identifier: str.type) -> "AndroidResourceInfo":
+def _get_android_resource_info(ctx: AnalysisContext, js_bundle_info: JsBundleInfo.type, identifier: str) -> "AndroidResourceInfo":
     aapt2_compile_output = aapt2_compile(
         ctx,
         js_bundle_info.res,
@@ -156,10 +156,11 @@ def _get_android_resource_info(ctx: "context", js_bundle_info: JsBundleInfo.type
         manifest_file = None,
         r_dot_java_package = r_dot_java_package,
         res = js_bundle_info.res,
+        res_priority = RESOURCE_PRIORITY_NORMAL,
         text_symbols = get_text_symbols(ctx, js_bundle_info.res, [], identifier),
     )
 
-def _get_extra_providers(ctx: "context", js_bundle_info: JsBundleInfo.type, identifier: str.type) -> ["provider"]:
+def _get_extra_providers(ctx: AnalysisContext, js_bundle_info: JsBundleInfo.type, identifier: str) -> list["provider"]:
     providers = [js_bundle_info]
     if ctx.attrs._platform == "android":
         resource_info = _get_android_resource_info(ctx, js_bundle_info, identifier)
@@ -170,7 +171,7 @@ def _get_extra_providers(ctx: "context", js_bundle_info: JsBundleInfo.type, iden
 
     return providers
 
-def js_bundle_impl(ctx: "context") -> ["provider"]:
+def js_bundle_impl(ctx: AnalysisContext) -> list["provider"]:
     sub_targets = {}
     default_outputs = []
     extra_unnamed_output_providers = None
@@ -192,6 +193,7 @@ def js_bundle_impl(ctx: "context") -> ["provider"]:
             misc_providers = [DefaultInfo(default_output = js_bundle_info.misc)]
             source_map_providers = [DefaultInfo(default_output = js_bundle_info.source_map)]
             dependencies_providers = [DefaultInfo(default_output = js_bundle_info.dependencies_file)]
+            res_providers = [DefaultInfo(default_output = js_bundle_info.res)]
 
             sub_targets[simple_name] = built_js_providers + extra_providers
             sub_targets["{}-misc".format(simple_name)] = misc_providers
@@ -207,11 +209,13 @@ def js_bundle_impl(ctx: "context") -> ["provider"]:
                     sub_targets["misc"] = misc_providers
                     sub_targets["source_map"] = source_map_providers
                     sub_targets["dependencies"] = dependencies_providers
+                    sub_targets["res"] = res_providers
                 else:
                     sub_targets[ram_bundle_name] = built_js_providers + extra_providers
                     sub_targets["{}-misc".format(ram_bundle_name)] = misc_providers
                     sub_targets["{}-source_map".format(ram_bundle_name)] = source_map_providers
                     sub_targets["{}-dependencies".format(ram_bundle_name)] = dependencies_providers
+                    sub_targets["{}-res".format(ram_bundle_name)] = res_providers
 
     expect(len(default_outputs) == 1, "Should get exactly one default output!")
     expect(extra_unnamed_output_providers != None, "Should set extra unnamed output providers once!")

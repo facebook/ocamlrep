@@ -17,7 +17,7 @@ def command_alias_impl(ctx):
     else:
         return _command_alias_impl_target_unix(ctx, exec_is_windows)
 
-def _command_alias_impl_target_unix(ctx, exec_is_windows: bool.type):
+def _command_alias_impl_target_unix(ctx, exec_is_windows: bool):
     if ctx.attrs.exe == None:
         base = RunInfo()
     else:
@@ -27,13 +27,13 @@ def _command_alias_impl_target_unix(ctx, exec_is_windows: bool.type):
 
     if len(ctx.attrs.env) > 0 or len(ctx.attrs.platform_exe.items()) > 0:
         trampoline_args = cmd_args()
-        trampoline_args.add("#!/bin/bash")
+        trampoline_args.add("#!/usr/bin/env bash")
         trampoline_args.add("set -euo pipefail")
         trampoline_args.add('BUCK_COMMAND_ALIAS_ABSOLUTE=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)')
 
         for (k, v) in ctx.attrs.env.items():
             # TODO(akozhevnikov): maybe check environment variable is not conflicting with pre-existing one
-            trampoline_args.add(cmd_args(["export ", k, "=", v], delimiter = ""))
+            trampoline_args.add(cmd_args(["export ", k, "=", cmd_args(v, quote = "shell")], delimiter = ""))
 
         if len(ctx.attrs.platform_exe.items()) > 0:
             trampoline_args.add('case "$(uname)" in')
@@ -76,7 +76,7 @@ def _command_alias_impl_target_unix(ctx, exec_is_windows: bool.type):
         RunInfo(args = run_info_args),
     ]
 
-def _command_alias_impl_target_windows(ctx, exec_is_windows: bool.type):
+def _command_alias_impl_target_windows(ctx, exec_is_windows: bool):
     # If a windows specific exe is specified, take that. Otherwise just use the default exe.
     windows_exe = ctx.attrs.platform_exe.get("windows")
     if windows_exe != None:
@@ -135,10 +135,10 @@ def _command_alias_impl_target_windows(ctx, exec_is_windows: bool.type):
 
 def _relativize_path(
         ctx,
-        trampoline_args: "cmd_args",
-        extension: str.type,
-        var: str.type,
-        exec_is_windows: bool.type) -> "artifact":
+        trampoline_args: cmd_args,
+        extension: str,
+        var: str,
+        exec_is_windows: bool) -> "artifact":
     # Depending on where this action is done, we need to either run sed or a custom Windows sed-equivalent script
     # TODO(marwhal): Bias the exec platform to be the same as target platform to simplify the relativization logic
     if exec_is_windows:
@@ -148,9 +148,9 @@ def _relativize_path(
 
 def _relativize_path_unix(
         ctx,
-        extension: str.type,
-        var: str.type,
-        trampoline_args: "cmd_args") -> "artifact":
+        extension: str,
+        var: str,
+        trampoline_args: cmd_args) -> "artifact":
     # FIXME(ndmitchell): more straightforward relativization with better API
     non_materialized_reference = ctx.actions.write("dummy", "")
     trampoline_args.relative_to(non_materialized_reference, parent = 1).absolute_prefix("__BUCK_COMMAND_ALIAS_ABSOLUTE__/")
@@ -178,38 +178,23 @@ def _relativize_path_unix(
 
 def _relativize_path_windows(
         ctx,
-        extension: str.type,
-        var: str.type,
-        trampoline_args: "cmd_args") -> "artifact":
+        extension: str,
+        var: str,
+        trampoline_args: cmd_args) -> "artifact":
     # FIXME(ndmitchell): more straightforward relativization with better API
     non_materialized_reference = ctx.actions.write("dummy", "")
-    trampoline_args.relative_to(non_materialized_reference, parent = 1).absolute_prefix("__BUCK_COMMAND_ALIAS_ABSOLUTE__/")
+    trampoline_args.relative_to(non_materialized_reference, parent = 1).absolute_prefix(var + "/")
 
-    trampoline_tmp, _ = ctx.actions.write("__command_alias_trampoline.{}.pre".format(extension), trampoline_args, allow_args = True)
+    trampoline, _ = ctx.actions.write("__command_alias_trampoline.{}".format(extension), trampoline_args, allow_args = True)
 
-    # TODO: We might need to put some care around quoting as mentioned in the sh based implementation above
-    trampoline = ctx.actions.declare_output("__command_alias_trampoline.{}".format(extension))
-
-    # Replace __BUCK_COMMAND_ALIAS_ABSOLUTE__ with the BUCK_COMMAND_ALIAS_ABSOLUTE environment variable set above
-    # so that the all paths are fully specified
-    ctx.actions.run(
-        [
-            _get_run_info_from_exe(ctx.attrs._find_and_replace_bat),
-            "__BUCK_COMMAND_ALIAS_ABSOLUTE__",
-            var,
-            trampoline_tmp,
-            trampoline.as_output(),
-        ],
-        category = "sed",
-    )
     return trampoline
 
-def _add_platform_case_to_trampoline_args(trampoline_args: "cmd_args", platform_name: str.type, base: RunInfo.type, args: ["_arglike"]):
+def _add_platform_case_to_trampoline_args(trampoline_args: cmd_args, platform_name: str, base: RunInfo.type, args: list["_arglike"]):
     trampoline_args.add("    {})".format(platform_name))
     _add_args_declaration_to_trampoline_args(trampoline_args, base, args)
     trampoline_args.add("        ;;")
 
-def _add_args_declaration_to_trampoline_args(trampoline_args: "cmd_args", base: RunInfo.type, args: ["_arglike"]):
+def _add_args_declaration_to_trampoline_args(trampoline_args: cmd_args, base: RunInfo.type, args: list["_arglike"]):
     trampoline_args.add("ARGS=(")
 
     # FIXME (T111687922): We cannot preserve BUCK_COMMAND_ALIAS_ABSOLUTE *and*
@@ -229,7 +214,7 @@ def _add_args_declaration_to_trampoline_args(trampoline_args: "cmd_args", base: 
 
     trampoline_args.add(")")
 
-def _get_run_info_from_exe(exe: "dependency") -> RunInfo.type:
+def _get_run_info_from_exe(exe: Dependency) -> RunInfo.type:
     run_info = exe.get(RunInfo)
     if run_info == None:
         run_info = RunInfo(

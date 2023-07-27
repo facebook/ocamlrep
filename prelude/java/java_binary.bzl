@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
+load("@prelude//java/utils:java_utils.bzl", "get_classpath_subtarget")
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "merge_shared_libraries", "traverse_shared_library_info")
 load("@prelude//utils:utils.bzl", "expect")
 load(
@@ -15,24 +16,23 @@ load(
     "get_java_packaging_info",
 )
 
-def _generate_script(generate_wrapper: bool.type, native_libs: {str.type: "SharedLibrary"}) -> bool.type:
+def _generate_script(generate_wrapper: bool, native_libs: dict[str, "SharedLibrary"]) -> bool:
     # if `generate_wrapper` is set and no native libs then it should be a wrapper script as result,
     # otherwise fat jar will be generated (inner jar or script will be included inside a final fat jar)
     return generate_wrapper and len(native_libs) == 0
 
 def _create_fat_jar(
-        ctx: "context",
+        ctx: AnalysisContext,
         java_toolchain: JavaToolchainInfo.type,
-        jars: "cmd_args",
-        native_libs: {str.type: "SharedLibrary"},
-        generate_wrapper: bool.type) -> ["artifact"]:
+        jars: cmd_args,
+        native_libs: dict[str, "SharedLibrary"],
+        do_not_create_inner_jar: bool,
+        generate_wrapper: bool) -> list["artifact"]:
     extension = "sh" if _generate_script(generate_wrapper, native_libs) else "jar"
     output = ctx.actions.declare_output("{}.{}".format(ctx.label.name, extension))
 
     args = [
         java_toolchain.fat_jar[RunInfo],
-        "--jar_tool",
-        java_toolchain.jar,
         "--jar_builder_tool",
         cmd_args(java_toolchain.jar_builder, delimiter = " "),
         "--output",
@@ -41,26 +41,41 @@ def _create_fat_jar(
         ctx.actions.write("jars_file", jars),
     ]
 
+    local_only = False
     if native_libs:
         expect(
             java_toolchain.is_bootstrap_toolchain == False,
             "Bootstrap java toolchain could not be used for java_binary() with native code.",
         )
         args += [
-            "--fat_jar_lib",
-            java_toolchain.fat_jar_main_class_lib,
             "--native_libs_file",
             ctx.actions.write("native_libs", [cmd_args([so_name, native_lib.lib.output], delimiter = " ") for so_name, native_lib in native_libs.items()]),
-            # fat jar's main class
-            "--fat_jar_main_class",
-            "com.facebook.buck.jvm.java.FatJarMain",
-            # native libraries directory name. Main class expects to find libraries packed inside this directory.
-            "--fat_jar_native_libs_directory_name",
-            "nativelibs",
         ]
+        if do_not_create_inner_jar:
+            args += [
+                "--do_not_create_inner_jar",
+            ]
+        else:
+            args += [
+                "--fat_jar_lib",
+                java_toolchain.fat_jar_main_class_lib,
+                # fat jar's main class
+                "--fat_jar_main_class",
+                "com.facebook.buck.jvm.java.FatJarMain",
+                # native libraries directory name. Main class expects to find libraries packed inside this directory.
+                "--fat_jar_native_libs_directory_name",
+                "nativelibs",
+            ]
+
+        # TODO(T151045001) native deps are not compressed (for performance), but that can result in
+        # really large binaries. Large outputs can cause issues on RE, so we run locally instead.
+        local_only = "run_locally_if_has_native_deps" in ctx.attrs.labels
 
     main_class = ctx.attrs.main_class
     if main_class:
+        if do_not_create_inner_jar and native_libs:
+            fail("For performance reasons, java binaries with a main class and native libs should always generate an inner jar.\
+            The reason for having inner.jar is so that we don't have to compress the native libraries, which is slow at compilation time and also at runtime (when decompressing).")
         args += ["--main_class", main_class]
 
     manifest_file = ctx.attrs.manifest_file
@@ -91,7 +106,12 @@ def _create_fat_jar(
     fat_jar_cmd = cmd_args(args)
     fat_jar_cmd.hidden(jars, [native_lib.lib.output for native_lib in native_libs.values()])
 
-    ctx.actions.run(fat_jar_cmd, category = "fat_jar")
+    ctx.actions.run(
+        fat_jar_cmd,
+        local_only = local_only,
+        category = "fat_jar",
+        allow_cache_upload = True,
+    )
 
     if generate_wrapper == False:
         expect(
@@ -105,19 +125,19 @@ def _create_fat_jar(
 
 def _get_run_cmd(
         attrs: struct.type,
-        script_mode: bool.type,
+        script_mode: bool,
         main_artifact: "artifact",
-        java_toolchain: JavaToolchainInfo.type) -> "cmd_args":
+        java_toolchain: JavaToolchainInfo.type) -> cmd_args:
     if script_mode:
-        return cmd_args(["/bin/bash", main_artifact])
+        return cmd_args(["/usr/bin/env", "bash", main_artifact])
     else:
         return cmd_args([java_toolchain.java[RunInfo]] + attrs.java_args_for_run_info + ["-jar", main_artifact])
 
-def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo.type) -> ["artifact"]:
+def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo.type) -> list["artifact"]:
     default_info = java_toolchain.java[DefaultInfo]
     return default_info.default_outputs + default_info.other_outputs
 
-def java_binary_impl(ctx: "context") -> ["provider"]:
+def java_binary_impl(ctx: AnalysisContext) -> list["provider"]:
     """
      java_binary() rule implementation
 
@@ -146,8 +166,9 @@ def java_binary_impl(ctx: "context") -> ["provider"]:
 
     java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo]
     need_to_generate_wrapper = ctx.attrs.generate_wrapper == True
+    do_not_create_inner_jar = ctx.attrs.do_not_create_inner_jar == True
     packaging_jar_args = packaging_info.packaging_deps.project_as_args("full_jar_args")
-    outputs = _create_fat_jar(ctx, java_toolchain, cmd_args(packaging_jar_args), native_deps, need_to_generate_wrapper)
+    outputs = _create_fat_jar(ctx, java_toolchain, cmd_args(packaging_jar_args), native_deps, do_not_create_inner_jar, need_to_generate_wrapper)
 
     main_artifact = outputs[0]
     other_outputs = []
@@ -168,8 +189,10 @@ def java_binary_impl(ctx: "context") -> ["provider"]:
         )
         other_outputs = [classpath_file] + [packaging_jar_args] + _get_java_tool_artifacts(java_toolchain)
 
+    sub_targets = get_classpath_subtarget(ctx.actions, packaging_info)
+
     return [
-        DefaultInfo(default_output = main_artifact, other_outputs = other_outputs),
+        DefaultInfo(default_output = main_artifact, other_outputs = other_outputs, sub_targets = sub_targets),
         RunInfo(args = run_cmd),
         create_template_info(packaging_info, first_order_libs),
     ]

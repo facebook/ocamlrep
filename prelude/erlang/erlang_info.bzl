@@ -99,11 +99,15 @@ ErlangToolchainInfo = provider(
         "boot_script_builder",
         # build release_variables
         "release_variables_builder",
+        # copying erts
+        "include_erts",
         # edoc-generating escript
         "edoc",
         "edoc_options",
         # beams we need for various reasons
         "utility_modules",
+        # env to be set for toolchain invocations
+        "env",
     ],
 )
 

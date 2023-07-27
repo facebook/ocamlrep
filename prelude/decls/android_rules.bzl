@@ -156,7 +156,6 @@ android_aar = prelude_rule(
             "srcs": attrs.list(attrs.source(), default = []),
             "target": attrs.option(attrs.string(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -180,7 +179,6 @@ android_app_modularity = prelude_rule(
             "no_dx": attrs.list(attrs.dep(), default = []),
             "should_include_classes": attrs.bool(default = True),
             "should_include_libraries": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -269,7 +267,6 @@ android_binary = prelude_rule(
             "skip_proguard": attrs.bool(default = False),
             "trim_resource_ids": attrs.bool(default = False),
             "use_split_dex": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "xz_compression_level": attrs.int(default = 4),
         }
     ),
@@ -411,7 +408,6 @@ android_build_config = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -501,7 +497,6 @@ android_bundle = prelude_rule(
             "skip_proguard": attrs.bool(default = False),
             "trim_resource_ids": attrs.bool(default = False),
             "use_split_dex": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "xz_compression_level": attrs.int(default = 4),
         }
     ),
@@ -576,10 +571,12 @@ android_instrumentation_apk = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "dex_tool": attrs.string(default = ""),
+            "disable_pre_dex": attrs.bool(default = False),
             "includes_vector_drawables": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
+            "use_split_dex": attrs.option(attrs.bool(), default = None),
+            "primary_dex_patterns": attrs.list(attrs.string(), default = []),
         }
     ),
 )
@@ -640,7 +637,6 @@ android_instrumentation_test = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -770,7 +766,6 @@ android_library = prelude_rule(
             "runtime_deps": attrs.list(attrs.dep(), default = []),
             "source_abi_verification_mode": attrs.option(attrs.enum(SourceAbiVerificationMode), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -844,7 +839,6 @@ android_manifest = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -859,7 +853,6 @@ android_platform = prelude_rule(
         {
             "base_platform": attrs.configuration_label(),
             "native_platforms": attrs.dict(key = attrs.enum(TargetCpuType), value = attrs.configuration_label(), sorted = False, default = {}),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -926,7 +919,6 @@ android_prebuilt_aar = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "required_for_source_only_abi": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1001,7 +993,6 @@ android_resource = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "resource_union": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1089,7 +1080,6 @@ apk_genrule = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "need_android_tools": attrs.bool(default = False),
             "remote": attrs.option(attrs.bool(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1152,7 +1142,6 @@ gen_aidl = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1197,7 +1186,6 @@ keystore = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1251,7 +1239,6 @@ ndk_library = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1314,7 +1301,6 @@ prebuilt_jar = prelude_rule(
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.bool(default = False),
             "required_for_source_only_abi": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1376,7 +1362,6 @@ prebuilt_native_library = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1422,6 +1407,7 @@ robolectric_test = prelude_rule(
             "fork_mode": attrs.enum(ForkMode, default = "none"),
             "friend_paths": attrs.list(attrs.dep(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
+            "java": attrs.option(attrs.dep(), default = None),
             "javac": attrs.option(attrs.source(), default = None),
             "kotlin_compiler_plugins": attrs.dict(key = attrs.source(), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False, default = {}),
             "labels": attrs.list(attrs.string(), default = []),
@@ -1457,11 +1443,11 @@ robolectric_test = prelude_rule(
             "test_case_timeout_ms": attrs.option(attrs.int(), default = None),
             "test_rule_timeout_ms": attrs.option(attrs.int(), default = None),
             "test_type": attrs.option(attrs.enum(TestType), default = None),
+            "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1482,7 +1468,6 @@ supermodule_target_graph = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "on_duplicate_entry": attrs.enum(OnDuplicateEntry, default = "overwrite"),
             "out": attrs.string(default = ""),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )

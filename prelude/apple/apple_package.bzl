@@ -10,14 +10,10 @@ load(":apple_bundle_destination.bzl", "AppleBundleDestination", "bundle_relative
 load(":apple_bundle_types.bzl", "AppleBundleInfo")
 load(":apple_package_config.bzl", "IpaCompressionLevel")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
+load(":apple_swift_stdlib.bzl", "should_copy_swift_stdlib")
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo")
 
-_SKIP_COPYING_SWIFT_STDLIB_EXTENSIONS = [
-    ".framework",
-    ".appex",
-]
-
-def apple_package_impl(ctx: "context") -> ["provider"]:
+def apple_package_impl(ctx: AnalysisContext) -> list["provider"]:
     ipa_contents = _get_ipa_contents(ctx)
     compression_level = _compression_level_arg(IpaCompressionLevel(ctx.attrs._ipa_compression_level))
 
@@ -38,8 +34,7 @@ def _get_ipa_contents(ctx) -> "artifact":
     }
 
     apple_bundle_info = bundle[AppleBundleInfo]
-    should_copy_swift_stdlib = not (apple_bundle_info.skip_copying_swift_stdlib or app.extension in _SKIP_COPYING_SWIFT_STDLIB_EXTENSIONS)
-    if should_copy_swift_stdlib:
+    if (not apple_bundle_info.skip_copying_swift_stdlib) and should_copy_swift_stdlib(app.extension):
         contents["SwiftSupport"] = _get_swift_support_dir(ctx, app, apple_bundle_info)
 
     if apple_bundle_info.contains_watchapp:
@@ -70,6 +65,7 @@ def _get_swift_support_dir(ctx, bundle_output: "artifact", bundle_info: AppleBun
     script, _ = ctx.actions.write(
         "build_swift_support.sh",
         [
+            cmd_args("set -euo pipefail"),
             cmd_args(swift_support_dir, format = "mkdir -p {}"),
             cmd_args(
                 [
@@ -117,7 +113,7 @@ def _get_scan_folder_args(dest: AppleBundleDestination.type, bundle_output: "art
         ],
     )
 
-def _compression_level_arg(compression_level: IpaCompressionLevel.type) -> str.type:
+def _compression_level_arg(compression_level: IpaCompressionLevel.type) -> str:
     if compression_level.value == "none":
         return "-0"
     elif compression_level.value == "default":

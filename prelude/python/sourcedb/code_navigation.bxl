@@ -10,19 +10,27 @@ load(":merge.bxl", "do_merge")
 load(":query.bxl", "do_query")
 
 def _build_entry_point(ctx: "bxl_ctx") -> None:
+    bxl_actions = ctx.bxl_actions(
+        exec_deps = "prelude//python/tools/sourcedb_merger:merge",
+        target_platform = "prelude//platforms:default",
+    )
+    actions = bxl_actions.actions
+
     query = ctx.cquery()
-    actions = ctx.bxl_actions.action_factory()
     root = ctx.root()
 
     sources = ["{}/{}".format(root, source) for source in ctx.cli_args.source]
     targets = do_query(ctx, query, actions, query.owner(sources))
     built_sourcedbs = do_build(ctx, targets)
 
+    # Ensure all source files are materialized
+    ctx.output.ensure_multiple(built_sourcedbs.values())
+
+    # Ensure merged sourcedb is materialized
     merged_sourcedb = do_merge(
         ctx,
-        actions,
+        bxl_actions,
         built_sourcedbs,
-        merger_target = "prelude//python/tools/sourcedb_merger:merge",
         command_category = "pyre_merge_sourcedb",
     )
     ctx.output.print_json({"db": merged_sourcedb.abs_path()})
