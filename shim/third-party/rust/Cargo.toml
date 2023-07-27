@@ -28,7 +28,7 @@ proc-macro2 = { version = "1.0.64", features = ["span-locations"] }
 quote = "1.0.29"
 regex = "1.6.0"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.167", features = ["derive", "rc"] }
+serde = { version = "1.0.176", features = ["derive", "rc"] }
 similar = { version = "2.2.0", features = ["inline"] }
 syn1 = { package = "syn", version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 synstructure = "0.12"
