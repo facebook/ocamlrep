@@ -13,7 +13,7 @@ Buck2 provides prebuilt binaries. For example the following commands will instal
   chmod +x buck2
   sudo ln -s "$(pwd)"/buck2 /usr/local/bin/buck2
 ```
-Valid values for `$PLAT` are `x86_64-unknown-linux-gnu` on Linux or `x86_64-apple-darwin` on x86 macOS.
+Valid values for `$PLAT` are `x86_64-unknown-linux-gnu` on Linux, `x86_64-apple-darwin` on x86 macOS and `aarch64-apple-darwin` on ARM macOS.
 
 It's also possible to install Buck2 from source into `~/.cargo/bin` like this.
 ```bash
