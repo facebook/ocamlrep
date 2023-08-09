@@ -52,9 +52,6 @@ commands:
       - run:
           name: Brew install
           command: |
-            # Avoid `brew link` step errors
-            rm -f '/usr/local/lib/python3.9/site-packages/six.py'
-            brew unlink python@3.9
             brew install cmake coreutils opam llvm zstd wget
       - init_opam
       - run:
@@ -141,8 +138,8 @@ jobs:
     description: |
       macOS cargo build & test
     macos:
-      xcode: 13.4.1
-    resource_class: macos.x86.medium.gen2
+      xcode: "14.2.0"
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - setup_macos_env
@@ -168,13 +165,13 @@ jobs:
     description: |
       macOS buck build
     macos:
-      xcode: 13.4.1
-    resource_class: macos.x86.medium.gen2
+      xcode: "14.2.0"
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - setup_macos_env
       - install_buck:
-          triple: "x86_64-apple-darwin"
+          triple: "aarch64-apple-darwin"
       - install_reindeer
       - reindeer
       - buck_tp
