@@ -762,6 +762,7 @@ impl<T: FromOcamlRep + Ord + Hash, S: BuildHasher + Default> FromOcamlRep for In
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for OsStr {
     // TODO: A Windows implementation would be nice, but what does the OCaml
     // runtime do? If we need Windows support, we'll have to find out.
@@ -777,6 +778,7 @@ impl ToOcamlRep for OsStr {
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for &'_ OsStr {
     #[cfg(unix)]
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
@@ -790,6 +792,7 @@ impl ToOcamlRep for &'_ OsStr {
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl<'a> FromOcamlRepIn<'a> for &'a OsStr {
     #[cfg(unix)]
     fn from_ocamlrep_in<'b>(value: Value<'b>, alloc: &'a Bump) -> Result<Self, FromError> {
@@ -805,12 +808,14 @@ impl<'a> FromOcamlRepIn<'a> for &'a OsStr {
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for OsString {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
         alloc.add(self.as_os_str())
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl FromOcamlRep for OsString {
     #[cfg(unix)]
     fn from_ocamlrep(value: Value<'_>) -> Result<Self, FromError> {
@@ -826,30 +831,35 @@ impl FromOcamlRep for OsString {
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for Path {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
         alloc.add(self.as_os_str())
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for &'_ Path {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
         alloc.add(self.as_os_str())
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl<'a> FromOcamlRepIn<'a> for &'a Path {
     fn from_ocamlrep_in<'b>(value: Value<'b>, alloc: &'a Bump) -> Result<Self, FromError> {
         Ok(Path::new(<&'a OsStr>::from_ocamlrep_in(value, alloc)?))
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl ToOcamlRep for PathBuf {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
         alloc.add(self.as_os_str())
     }
 }
 
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl FromOcamlRep for PathBuf {
     fn from_ocamlrep(value: Value<'_>) -> Result<Self, FromError> {
         Ok(PathBuf::from(OsString::from_ocamlrep(value)?))
