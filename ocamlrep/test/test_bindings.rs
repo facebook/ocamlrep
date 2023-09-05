@@ -20,6 +20,8 @@ fn val<T: FromOcamlRep + ToOcamlRep>(value: T) -> usize {
     value.to_bits()
 }
 
+/// # Safety
+/// `value` must be a valid pointer to an OCaml value.
 #[no_mangle]
 pub unsafe extern "C" fn convert_to_ocamlrep(value: usize) -> usize {
     let arena = Box::leak(Box::new(ocamlrep::Arena::new()));

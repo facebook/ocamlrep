@@ -402,6 +402,8 @@ pub fn operations_helper<T: CamlSerialize>() -> CustomOperations {
 
 /// Helper used for the `caml_serialize_default_impls` macro
 ///
+/// # Safety
+///
 /// Should not be used directly. Interacts with the OCaml runtime and is
 /// thus unsafe to call in a multi-threaded context.
 pub unsafe fn register_helper<T>(ops: &'static CustomOperations) {

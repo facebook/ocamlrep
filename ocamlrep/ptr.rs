@@ -30,6 +30,10 @@ use crate::Value;
 pub struct UnsafeOcamlPtr(NonZeroUsize);
 
 impl UnsafeOcamlPtr {
+    /// # Safety
+    ///
+    /// `ptr` must be rooted or the garbage collector can not be allowed to run
+    /// while an `UnsafeOcamlPtr` wrapper that contains it exists.
     pub unsafe fn new(ptr: usize) -> Self {
         Self(NonZeroUsize::new(ptr).unwrap())
     }
@@ -53,6 +57,9 @@ impl UnsafeOcamlPtr {
     }
 
     /// Interpret this pointer as an OCaml value which is valid for lifetime 'a.
+    ///
+    /// # Safety
+    ///
     /// The OCaml garbage collector must not run during this lifetime (even if
     /// the value is rooted).
     #[inline(always)]

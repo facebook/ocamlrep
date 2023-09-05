@@ -400,6 +400,10 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
     }
 }
 
+/// # Safety
+///
+/// `str` must be a valid OCaml value encoded in the
+/// [`Marshal`](https://v2.ocaml.org/api/Marshal.html) format.
 pub unsafe fn input_value<'a, A: ocamlrep::Allocator>(
     str: &[u8],
     alloc: &'a A,
