@@ -71,6 +71,13 @@ pub struct Arena {
     cache: MemoizationCache,
 }
 
+impl Default for Arena {
+    /// Create a new Arena with 4KB of capacity preallocated.
+    fn default() -> Self {
+        Arena::new()
+    }
+}
+
 impl Arena {
     /// Create a new Arena with 4KB of capacity preallocated.
     pub fn new() -> Self {

@@ -18,6 +18,13 @@ pub struct MemoizationCache {
     cache: RefCell<Option<HashMap<(usize, usize), usize>>>,
 }
 
+impl Default for MemoizationCache {
+    #[inline(always)]
+    fn default() -> Self {
+        MemoizationCache::new()
+    }
+}
+
 impl MemoizationCache {
     #[inline(always)]
     pub fn new() -> Self {
