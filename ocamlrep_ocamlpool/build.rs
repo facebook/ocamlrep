@@ -22,12 +22,11 @@ fn ocamllib_dir() -> std::path::PathBuf {
         let mut sh = std::process::Command::new("sh");
         sh.args(["-c", "which ocamlopt.opt"]);
         let output = sh.output().unwrap().stdout;
-        let p = std::path::Path::new(std::str::from_utf8(&output).unwrap().trim())
+        std::path::Path::new(std::str::from_utf8(&output).unwrap().trim())
             .ancestors()
             .nth(2)
-            .unwrap();
-        let pp = p.join("lib/ocaml");
-        pp
+            .unwrap()
+            .join("lib/ocaml")
     }
 }
 
