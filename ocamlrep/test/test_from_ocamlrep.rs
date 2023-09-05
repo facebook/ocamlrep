@@ -75,10 +75,10 @@ struct Foo {
 fn bad_struct_field() {
     let arena = Arena::new();
     let value = {
-        let mut foo = arena.block_with_size_and_tag(2, 0);
-        arena.set_field(&mut foo, 0, Value::int(0));
-        arena.set_field(&mut foo, 1, Value::int(42));
-        foo.build()
+        let mut block = arena.block_with_size_and_tag(2, 0);
+        arena.set_field(&mut block, 0, Value::int(0));
+        arena.set_field(&mut block, 1, Value::int(42));
+        block.build()
     };
     let err = Foo::from_ocamlrep(value).err().unwrap();
     assert_eq!(err, ErrorInField(1, Box::new(ExpectedBool(42))));
@@ -94,21 +94,21 @@ struct Bar {
 fn bad_nested_struct_field() {
     let arena = Arena::new();
 
-    let foo = {
-        let mut foo = arena.block_with_size_and_tag(2, 0);
-        arena.set_field(&mut foo, 0, Value::int(0));
-        arena.set_field(&mut foo, 1, Value::int(42));
-        foo.build()
+    let inner = {
+        let mut block = arena.block_with_size_and_tag(2, 0);
+        arena.set_field(&mut block, 0, Value::int(0));
+        arena.set_field(&mut block, 1, Value::int(42));
+        block.build()
     };
 
-    let bar = {
-        let mut bar = arena.block_with_size_and_tag(2, 0);
-        arena.set_field(&mut bar, 0, foo);
-        arena.set_field(&mut bar, 1, Value::int(0));
-        bar.build()
+    let outer = {
+        let mut block = arena.block_with_size_and_tag(2, 0);
+        arena.set_field(&mut block, 0, inner);
+        arena.set_field(&mut block, 1, Value::int(0));
+        block.build()
     };
 
-    let err = Bar::from_ocamlrep(bar).err().unwrap();
+    let err = Bar::from_ocamlrep(outer).err().unwrap();
     assert_eq!(
         err,
         ErrorInField(0, Box::new(ErrorInField(1, Box::new(ExpectedBool(42)))))
