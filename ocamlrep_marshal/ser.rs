@@ -330,10 +330,7 @@ impl<'a, W: Write> State<'a, W> {
             // SAFETY: `data.as_ptr()` will be valid for reads of `data.len() *
             // size_of::<f64>()` bytes
             self.writeblock(unsafe {
-                std::slice::from_raw_parts(
-                    data.as_ptr() as *const u8,
-                    data.len() * std::mem::size_of::<f64>(),
-                )
+                std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data))
             })
         } else {
             unimplemented!()

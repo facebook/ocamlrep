@@ -421,7 +421,7 @@ impl<T: ToOcamlRep> ToOcamlRep for &'_ [T] {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, alloc: &'a A) -> Value<'a> {
         alloc.memoized(
             self.as_ptr() as usize,
-            self.len() * size_of::<T>(),
+            std::mem::size_of_val(*self),
             |alloc| (**self).to_ocamlrep(alloc),
         )
     }
