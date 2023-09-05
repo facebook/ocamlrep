@@ -322,7 +322,7 @@ mod tests {
                 "-o",
                 "test_ocamlrep_ml.cmx",
             ],
-            Some(&tmp_dir.path()),
+            Some(tmp_dir.path()),
         );
         assert_eq!(run(compile_cmd).map_err(fmt_exit_status_err), Ok(()));
         let link_cmd = cmd(
@@ -339,7 +339,7 @@ mod tests {
                 "-cclib",
                 "-locamlrep_ocamlpool",
             ],
-            Some(&tmp_dir.path()),
+            Some(tmp_dir.path()),
         );
         assert_eq!(run(link_cmd).map_err(fmt_exit_status_err), Ok(()));
         let ocamlrep_test_cmd = cmd(

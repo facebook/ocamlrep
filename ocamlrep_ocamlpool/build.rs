@@ -20,7 +20,7 @@ fn ocamllib_dir() -> std::path::PathBuf {
         // Fallback to guessing the location given knowledge of where
         // 'ocamlopt.opt' itself it.
         let mut sh = std::process::Command::new("sh");
-        sh.args(&["-c", "which ocamlopt.opt"]);
+        sh.args(["-c", "which ocamlopt.opt"]);
         let output = sh.output().unwrap().stdout;
         let p = std::path::Path::new(std::str::from_utf8(&output).unwrap().trim())
             .ancestors()
