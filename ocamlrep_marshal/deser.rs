@@ -332,30 +332,26 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
                             }
                         }
                     }
-                    match current_block {
-                        READ_BLOCK_LABEL => {
-                            if size == 0 {
-                                panic!("input_value: atoms are not supported");
+                    if current_block == READ_BLOCK_LABEL {
+                        if size == 0 {
+                            panic!("input_value: atoms are not supported");
+                        } else {
+                            let mut builder = self.alloc.block_with_size_and_tag(size, tag);
+                            if tag == ocamlrep::OBJECT_TAG {
+                                panic!("input_value: objects not supported");
                             } else {
-                                let mut builder = self.alloc.block_with_size_and_tag(size, tag);
-                                if tag == ocamlrep::OBJECT_TAG {
-                                    panic!("input_value: objects not supported");
-                                } else {
-                                    // If it's not an object then read the
-                                    // contents of the block
-                                    self.stack.push(InternItem {
-                                        op: InternItemStackOp::ReadItems,
-                                        dest: self.alloc.block_ptr_mut(&mut builder)
-                                            as *mut Value<'a>,
-                                        arg: size,
-                                    });
-                                }
-                                v = Value::from_bits(builder.build().to_bits());
-                                self.obj_counter += 1;
-                                self.intern_obj_table.push(v);
+                                // If it's not an object then read the
+                                // contents of the block
+                                self.stack.push(InternItem {
+                                    op: InternItemStackOp::ReadItems,
+                                    dest: self.alloc.block_ptr_mut(&mut builder) as *mut Value<'a>,
+                                    arg: size,
+                                });
                             }
+                            v = Value::from_bits(builder.build().to_bits());
+                            self.obj_counter += 1;
+                            self.intern_obj_table.push(v);
                         }
-                        _ => {}
                     }
                     *dest = v
                 }
