@@ -404,8 +404,8 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
     }
 }
 
-pub unsafe fn input_value<'s, 'a, A: ocamlrep::Allocator>(
-    str: &'s [u8],
+pub unsafe fn input_value<'a, A: ocamlrep::Allocator>(
+    str: &[u8],
     alloc: &'a A,
 ) -> ocamlrep::Value<'a> {
     let mut state = State::new(alloc, str);

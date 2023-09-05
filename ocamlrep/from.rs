@@ -31,7 +31,7 @@ pub fn expect_nullary_variant(value: Value<'_>, max: usize) -> Result<isize, Fro
     }
 }
 
-pub fn expect_block<'a>(value: Value<'a>) -> Result<Block<'a>, FromError> {
+pub fn expect_block(value: Value<'_>) -> Result<Block<'_>, FromError> {
     match value.as_block() {
         Some(block) => Ok(block),
         None => Err(FromError::ExpectedBlock(value.as_int().unwrap())),
@@ -69,7 +69,7 @@ pub fn expect_block_with_size_and_tag(
     Ok(block)
 }
 
-pub fn expect_tuple<'a>(value: Value<'a>, size: usize) -> Result<Block<'a>, FromError> {
+pub fn expect_tuple(value: Value<'_>, size: usize) -> Result<Block<'_>, FromError> {
     let block = expect_block(value)?;
     expect_block_size(block, size)?;
     if block.tag() != 0 {

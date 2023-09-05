@@ -897,7 +897,7 @@ pub fn str_to_ocamlrep<'a, A: Allocator>(s: &str, alloc: &'a A) -> Value<'a> {
 
 /// Given an OCaml string, return a string slice pointing to its contents, if
 /// they are valid UTF-8.
-pub fn str_from_ocamlrep<'a>(value: Value<'a>) -> Result<&'a str, FromError> {
+pub fn str_from_ocamlrep(value: Value<'_>) -> Result<&str, FromError> {
     Ok(std::str::from_utf8(bytes_from_ocamlrep(value)?)?)
 }
 
@@ -976,7 +976,7 @@ pub fn bytes_to_ocamlrep<'a, A: Allocator>(bytes: &[u8], alloc: &'a A) -> Value<
 }
 
 /// Given an OCaml string, return a byte slice pointing to its contents.
-pub fn bytes_from_ocamlrep<'a>(value: Value<'a>) -> Result<&'a [u8], FromError> {
+pub fn bytes_from_ocamlrep(value: Value<'_>) -> Result<&[u8], FromError> {
     let block = from::expect_block(value)?;
     from::expect_block_tag(block, block::STRING_TAG)?;
     let block_size_in_bytes = block.size() * std::mem::size_of::<Value<'_>>();

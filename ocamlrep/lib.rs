@@ -478,7 +478,7 @@ pub trait Allocator: Sized {
     /// Allocate a block with tag `STRING_TAG` and enough space for a string of
     /// `len` bytes. Write its header and return a `BlockBytes` wrapping the
     /// buffer and the block.
-    fn byte_string_with_len<'a>(&'a self, len: usize) -> BlockBytes<'a> {
+    fn byte_string_with_len(&self, len: usize) -> BlockBytes<'_> {
         let word_size = std::mem::size_of::<*const u8>();
         let words = (len + 1 /*null-ending*/ + (word_size - 1)/*rounding*/) / word_size;
         let length = words * word_size;
