@@ -85,6 +85,13 @@ commands:
             chmod +x buck2
             sudo ln -s $(pwd)/buck2 /usr/local/bin/buck2
 
+  cargo_install_buck:
+    description: Use cargo to install buck2
+    steps:
+      - run:
+          name: Install reindeer
+          command: |
+            cargo +nightly-2023-06-27 install --git https://github.com/facebook/buck2.git buck2 --force
 
   install_reindeer:
     description: Use cargo to install reindeer
@@ -92,7 +99,7 @@ commands:
       - run:
           name: Install reindeer
           command: |
-            cargo +nightly-2023-05-28 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
+            cargo +nightly-2023-06-27 install --git https://github.com/facebookincubator/reindeer.git reindeer --force
 
   reindeer:
     description: Use reindeer to vendor & buckify rust 3rd-party deps
@@ -170,8 +177,11 @@ jobs:
     steps:
       - checkout
       - setup_macos_env
-      - install_buck:
-          triple: "aarch64-apple-darwin"
+      # This is currently broken due to the recent upgrade to
+      # rust-1.72.0 (D49019964). A new release is required.
+      # - install_buck:
+      #     triple: "aarch64-apple-darwin"
+      - cargo_install_buck
       - install_reindeer
       - reindeer
       - buck_tp
