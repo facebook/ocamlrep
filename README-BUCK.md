@@ -17,14 +17,20 @@ Valid values for `$PLAT` are `x86_64-unknown-linux-gnu` on Linux, `x86_64-apple-
 
 It's also possible to install Buck2 from source into `~/.cargo/bin` like this.
 ```bash
-  cargo +nightly-2023-03-07 install --git https://github.com/facebook/buck2.git buck2
+  cargo +nightly-2023-06-27 install --git https://github.com/facebook/buck2.git buck2
 ```
+*Note: If on aarch64-apple-darwin then be sure install to `brew install protobuf` and for the now it's necessary to add
+```bash
+  export BUCK2_BUILD_PROTOC=/opt/homebrew/opt/protobuf/bin/protoc
+  export BUCK2_BUILD_PROTOC_INCLUDE=/opt/homebrew/opt/protobuf/include
+```
+to the build environment.*
 
 ### Install Reindeer
 
 Install the `reindeer` binary from source into '~/.cargo/bin' like this.
 ```bash
-    cargo +nightly-2023-03-07 install --git https://github.com/facebookincubator/reindeer.git reindeer
+    cargo +nightly-2023-06-27 install --git https://github.com/facebookincubator/reindeer.git reindeer
 ```
 
 *Note: Make sure after installing Buck2 and Reindeer to configure your `PATH` environment variable if necessary so they can be found.*
