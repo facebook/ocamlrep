@@ -58,8 +58,8 @@ commands:
           name: Set environment variables
           command: |
             echo 'source "$HOME"/.cargo/env' >> "$BASH_ENV"
+            echo 'export PATH=/usr/local/opt/llvm/bin:/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
             echo 'eval $(opam env)' >> "$BASH_ENV"
-            echo 'export PATH=/usr/local/opt/llvm/bin:"$PATH"' >> "$BASH_ENV"
       - setup_ocaml_tp
 
   cargo:
