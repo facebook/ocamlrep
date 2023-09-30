@@ -195,8 +195,7 @@ fn parse_ocamlrep_attr(attrs: &[Attribute]) -> Option<Vec<NestedMeta>> {
             Meta::List(list) => {
                 // #[foo(bar)]
                 if list.path.is_ident("ocamlrep") {
-                    res.get_or_insert_with(Vec::new)
-                        .extend(list.nested.into_iter());
+                    res.get_or_insert_with(Vec::new).extend(list.nested);
                 }
             }
             Meta::NameValue(_) => {

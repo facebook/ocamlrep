@@ -344,7 +344,7 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
                                 // contents of the block
                                 self.stack.push(InternItem {
                                     op: InternItemStackOp::ReadItems,
-                                    dest: self.alloc.block_ptr_mut(&mut builder) as *mut Value<'a>,
+                                    dest: self.alloc.block_ptr_mut(&mut builder),
                                     arg: size,
                                 });
                             }

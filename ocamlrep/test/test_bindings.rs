@@ -110,7 +110,7 @@ pub extern "C" fn get_byte_slice(_unit: usize) -> usize {
 #[no_mangle]
 pub extern "C" fn get_int_opt_slice(_unit: usize) -> usize {
     let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
-    let vec = vec![None, Some(2), Some(3)];
+    let vec = [None, Some(2), Some(3)];
     let slice = &vec[..];
     arena.add(slice).to_bits()
 }
