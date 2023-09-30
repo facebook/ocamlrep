@@ -404,7 +404,8 @@ macro_rules! ocaml_registered_function_fn {
     ($ocaml_name:expr, fn $name:ident($($param:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
         #[no_mangle]
         pub unsafe fn $name ($($param: $ty,)*) -> $ret {
-            static FN: once_cell::sync::OnceCell<usize> = once_cell::sync::OnceCell::new();
+            use std::sync::OnceLock;
+            static FN: OnceLock<usize> = OnceLock::new();
             let the_function_to_call = *FN.get_or_init(|| {
                 let the_function_to_call_name = std::ffi::CString::new($ocaml_name).expect("string contained null byte");
                 let the_function_to_call = $crate::caml_named_value(the_function_to_call_name.as_ptr());
