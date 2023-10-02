@@ -380,7 +380,14 @@ void ocamlpool_leave(void) {
  */
 value ocamlpool_reserve_block(tag_t tag, mlsize_t wosize) {
   caml_domain_state* d = Caml_state;
-  value* p = caml_shared_try_alloc(d->shared_heap, wosize, tag, 0);
+  value* p = caml_shared_try_alloc(
+      d->shared_heap,
+      wosize,
+      tag,
+#if OCAML_VERSION >= 50100
+      0, /* no reserved bits */
+#endif
+      0 /* not pinned*/);
   d->allocated_words += Whsize_wosize(wosize);
 
   if (p == NULL) {
