@@ -15,17 +15,12 @@ then
     exit
 fi
 
+set +u
 if [ -z "$OPAM_SWITCH_PREFIX" ]; then
     echo "OPAM_SWITCH_PREFIX is undefined. First execute \`eval (\$opam env)\` and then try running $0 again."
     exit
 fi
-
-# Link 'shim/third-party/ocaml/standard_library'.
-if [ ! -L shim/third-party/ocaml/standard_library ]; then
-  (cd shim/third-party/ocaml && ln -s "$(ocamlopt.opt -config | grep standard_library: | awk '{ print $2 }' )" standard_library)
-else
-    echo "Link 'shim/third-party/ocaml/standard_library' exists. To overwrite it, first remove it and run $0 again"
-fi
+set -u
 
 # Link 'third-party/ocaml/opam'.
 if [ ! -L shim/third-party/ocaml/opam ]; then
