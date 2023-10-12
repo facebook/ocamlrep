@@ -1,5 +1,3 @@
-# @noautodeps
-
 load("@fbcode//common/ocaml/interop:defs.bzl", "RUST_FLAGS_2018")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
