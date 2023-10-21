@@ -44,18 +44,18 @@ const _: () = {
     #[allow(unused_imports)]
     use cargo_test_utils;
     #[allow(unused_imports)]
-    use tempdir;
+    use tempfile;
 };
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
     use cargo_test_utils::*;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn ocamlrep_marshal_test() -> Result<()> {
-        let tmp_dir = TempDir::new("ocamlrep_marshal_test")?;
+        let tmp_dir = TempDir::with_prefix("ocamlrep_marshal_test.")?;
         std::fs::copy(
             "test_ocamlrep_marshal.ml",
             tmp_dir.path().join("test_ocamlrep_marshal.ml"),

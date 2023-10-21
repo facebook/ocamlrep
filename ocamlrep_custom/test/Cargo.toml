@@ -18,4 +18,4 @@ anyhow = "=1.0.72"
 cargo_test_utils = { path = "../../cargo_test_utils" }
 ocamlrep_custom = { path = ".." }
 ocamlrep_ocamlpool = { path = "../../ocamlrep_ocamlpool" }
-tempdir = "0.3"
+tempfile = "3.5"

@@ -91,11 +91,11 @@ ocaml_ffi! {
 mod tests {
     use anyhow::Result;
     use cargo_test_utils::*;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn ocamlpool_test() -> Result<()> {
-        let tmp_dir = TempDir::new("ocamlpool_test")?;
+        let tmp_dir = TempDir::with_prefix("ocamlpool_test.")?;
         std::fs::copy(
             "ocamlpool_test.ml",
             tmp_dir.path().join("ocamlpool_test.ml"),

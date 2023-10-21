@@ -298,19 +298,19 @@ const _: () = {
     #[allow(unused_imports)]
     use cargo_test_utils;
     #[allow(unused_imports)]
-    use tempdir;
+    use tempfile;
 };
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
     use cargo_test_utils::*;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn ocamlrep_test() -> Result<()> {
         let parent = std::path::Path::new("..");
-        let tmp_dir = TempDir::new("ocamlrep_test")?;
+        let tmp_dir = TempDir::with_prefix("ocamlrep_test.")?;
         std::fs::copy(
             parent.join("test_ocamlrep.ml"),
             tmp_dir.path().join("test_ocamlrep.ml"),

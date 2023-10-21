@@ -31,7 +31,7 @@ rust_library(
         "fbcode//common/ocaml/interop/ocamlrep_caml_builtins:ocamlrep_caml_builtins",
         "fbcode//common/ocaml/interop/ocamlrep_ocamlpool:ocamlrep_ocamlpool",
         "fbsource//third-party/rust:anyhow",
-        "fbsource//third-party/rust:tempdir",
+        "fbsource//third-party/rust:tempfile",
     ],
 )
 

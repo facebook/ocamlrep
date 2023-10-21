@@ -19,4 +19,4 @@ cargo_test_utils = { path = "../../../cargo_test_utils" }
 ocamlrep = { path = "../.." }
 ocamlrep_caml_builtins = { path = "../../../ocamlrep_caml_builtins" }
 ocamlrep_ocamlpool = { path = "../../../ocamlrep_ocamlpool" }
-tempdir = "0.3"
+tempfile = "3.5"
