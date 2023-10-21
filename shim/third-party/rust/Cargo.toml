@@ -32,7 +32,7 @@ serde = { version = "1.0.185", features = ["derive", "rc"] }
 similar = { version = "2.2.0", features = ["inline"] }
 syn1 = { package = "syn", version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 synstructure = "0.12"
-tempfile = "3.5"
+tempfile = "3.8"
 thiserror = "1.0.43"
 toml = "0.7.3"
 walkdir = "2.3"
