@@ -24,7 +24,7 @@ hex = "0.4.3"
 indexmap = { version = "1.9.2", features = ["arbitrary", "rayon", "serde-1"] }
 md-5 = "0.10"
 once_cell = "1.12"
-proc-macro2 = { version = "1.0.64", features = ["span-locations"] }
+proc-macro2 = { version = "1.0.70", features = ["span-locations"] }
 quote = "1.0.29"
 regex = "1.9.2"
 rustc-hash = "1.1.0"
