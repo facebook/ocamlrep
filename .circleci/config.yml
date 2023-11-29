@@ -100,11 +100,10 @@ commands:
       - run:
           name: Run reindeer steps
           command: |
-            reindeer --third-party-dir shim/third-party/rust vendor
             reindeer --third-party-dir shim/third-party/rust buckify
 
   buck_tp:
-    description: Use buck to build third-party deps (we don't currently call this)
+    description: Use buck to build third-party deps
     steps:
       - run:
           name: Build 3rd party rust.
@@ -158,6 +157,7 @@ jobs:
           triple: "x86_64-unknown-linux-gnu"
       - install_reindeer
       - reindeer
+      - buck_tp
       - buck_ocamlrep
 
   macos-buck-build:
@@ -173,6 +173,7 @@ jobs:
           triple: "aarch64-apple-darwin"
       - install_reindeer
       - reindeer
+      - buck_tp
       - buck_ocamlrep
 
 workflows:
