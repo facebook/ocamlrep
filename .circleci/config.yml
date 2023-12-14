@@ -9,7 +9,7 @@ commands:
       - run:
           name: Download rust
           command: |
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly-2023-07-10 -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly-2023-10-01 -y
 
   init_opam:
     description: Initialize opam
