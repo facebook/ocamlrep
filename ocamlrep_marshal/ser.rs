@@ -412,7 +412,7 @@ impl<'a, W: Write> State<'a, W> {
             // Check the prevailing OCaml version is well initialized & one
             // we've tested for.
             let which_ocaml = unsafe { ocaml_version() };
-            if ![41400, 41401, 50000, 50100].contains(&which_ocaml) {
+            if ![41400, 41401, 50000, 50100, 50101].contains(&which_ocaml) {
                 panic!("unexpected ocaml version: {which_ocaml}!");
             }
 
