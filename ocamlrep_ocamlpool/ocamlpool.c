@@ -118,7 +118,8 @@ static void assert_out_of_section(void) {
  */
 
 static void init_cursor(void) {
-  ocamlpool_limit = (value*)ocamlpool_root;
+  ocamlpool_limit =
+      (value*)ocamlpool_root + 1; // Need one word left for header block
   ocamlpool_bound = (value*)ocamlpool_root + Wosize_val(ocamlpool_root);
   ocamlpool_cursor = ocamlpool_bound;
 }
@@ -135,6 +136,7 @@ __attribute__((no_sanitize("undefined"))) static void ocamlpool_chunk_truncate(
 
   OCAMLPOOL_SET_HEADER(ocamlpool_root, word_size, String_tag, ocamlpool_color);
   value* first_word = (value*)ocamlpool_root;
+  abort_unless(word_size > 0, "ocamlpool_truncate 0 words left for terminator");
   first_word[word_size - 1] = 0;
 }
 
@@ -253,8 +255,8 @@ value ocamlpool_reserve_block(int tag, size_t words) {
   if (pointer < ocamlpool_limit || pointer >= ocamlpool_bound) {
     size_t old_ocamlpool_next_chunk_size = ocamlpool_next_chunk_size;
     if (size >= ocamlpool_next_chunk_size) {
-      // Add 1 word for ocaml's header
-      ocamlpool_next_chunk_size = size + 1;
+      // Add 2 words for ocaml's header + block
+      ocamlpool_next_chunk_size = size + 2;
     }
     ocamlpool_chunk_truncate();
     ocamlpool_chunk_alloc();
@@ -276,7 +278,7 @@ value ocamlpool_reserve_string(size_t bytes) {
   size_t words =
       ((bytes + 1 /*null-ending*/ + (WORD_SIZE - 1) /*rounding*/) / WORD_SIZE);
   size_t length = (words * WORD_SIZE);
-
+  abort_unless(words > 0, "ocamlpool_reserve_string 0 length");
   value result = ocamlpool_reserve_block(String_tag, words);
 
   ((value*)result)[words - 1] = 0;
