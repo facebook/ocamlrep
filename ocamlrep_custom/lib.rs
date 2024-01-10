@@ -81,10 +81,12 @@ impl CustomOperations {
 /// Expose Rust type:
 ///
 /// ```rust
-/// use ocamlrep_custom::caml_serialize_default_impls;
-/// use ocamlrep_custom::{CamlSerialize, Custom};
-/// use ocamlrep_ocamlpool::ocaml_ffi;
 /// use std::cell::Cell;
+///
+/// use ocamlrep_custom::caml_serialize_default_impls;
+/// use ocamlrep_custom::CamlSerialize;
+/// use ocamlrep_custom::Custom;
+/// use ocamlrep_ocamlpool::ocaml_ffi;
 ///
 /// pub struct Counter(Cell<isize>);
 ///
@@ -247,7 +249,7 @@ fn rc_from_value<T: CamlSerialize>(value: Value<'_>) -> Result<&Rc<T>, FromError
 ///
 /// ```
 /// impl CamlSerialize for MyType {
-///    caml_serialize_default_impls!();
+///     caml_serialize_default_impls!();
 /// }
 /// ```
 pub trait CamlSerialize: Sized {
