@@ -24,6 +24,7 @@ extern "C" {
 
 bitflags::bitflags! {
     /// Flags affecting marshaling
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct ExternFlags: u8 {
         /// Flag to ignore sharing
         const NO_SHARING = 1;
