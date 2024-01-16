@@ -3,13 +3,24 @@ aliases:
       equal: [ main, << pipeline.git.branch >> ]
 
 commands:
-  install_rust_toolchain:
-    description: Install a rust toolchain
+  print_rust_version_info:
+    description: Rust toolchain version info
     steps:
       - run:
-          name: Download rust
+          name: Rust version info
           command: |
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly-2023-10-01 -y
+            rustup show
+            rustc --version
+            cargo --version
+            rustup --version
+
+  install_rustup:
+    description: Install rustup
+    steps:
+      - run:
+          name: Install rustup
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain=none
 
   init_opam:
     description: Initialize opam
@@ -17,7 +28,7 @@ commands:
       - run:
           name: Init opam
           command: |
-            opam init --compiler=5.1.0 --disable-sandboxing -y
+            opam init --compiler=5.1.1 --disable-sandboxing -y
 
   setup_ocaml_tp:
     description: Write symlinks shim/third-party/ocaml
@@ -31,7 +42,8 @@ commands:
   setup_linux_env:
     description: Linux installation steps
     steps:
-      - install_rust_toolchain
+      - install_rustup
+      - print_rust_version_info
       - run:
           name: Aptitude install
           command: |
@@ -48,7 +60,8 @@ commands:
   setup_macos_env:
     description: macOS installation steps
     steps:
-      - install_rust_toolchain
+      - install_rustup
+      - print_rust_version_info
       - run:
           name: Brew install
           command: |
