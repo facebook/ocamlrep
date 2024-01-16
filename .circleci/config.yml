@@ -9,7 +9,7 @@ commands:
       - run:
           name: Download rust
           command: |
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly-2023-10-01 -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
   init_opam:
     description: Initialize opam
@@ -17,7 +17,7 @@ commands:
       - run:
           name: Init opam
           command: |
-            opam init --compiler=5.1.0 --disable-sandboxing -y
+            opam init --compiler=5.1.1 --disable-sandboxing -y
 
   setup_ocaml_tp:
     description: Write symlinks shim/third-party/ocaml
