@@ -2,14 +2,25 @@ name: Cargo build and test
 on:
   push:
   pull_request:
+  workflow_dispatch:
 jobs:
-  linux-cargo-build-and-test:
-    runs-on: ubuntu-latest
+  cargo-build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install libssl-dev cmake clang lld opam zstd
-      - run: opam init --compiler=5.1.1 --disable-sandboxing -y
-      - run: eval $(opam env) && ./ocaml-setup.sh
+      - run: sudo apt-get update && sudo apt-get install opam
+        if: matrix.os == 'ubuntu'
+      - run: brew install opam
+        if: matrix.os == 'macos'
+      - run: |
+          opam init --compiler=5.1.1 --disable-sandboxing -y
+          opam env | sed "s/export .*//g" | sed "s/'//g" | sed "s/\;//g" >> $GITHUB_ENV
+      - run: ./ocaml-setup.sh
       - run: cargo build
       - run: cargo test
