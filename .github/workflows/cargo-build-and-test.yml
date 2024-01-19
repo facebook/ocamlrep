@@ -20,7 +20,7 @@ jobs:
         if: matrix.os == 'macos'
       - run: |
           opam init --compiler=5.1.1 --disable-sandboxing -y
-          opam env | sed "s/export .*//g" | sed "s/'//g" | sed "s/\;//g" >> $GITHUB_ENV
+          opam env | sed "s/ export .*//g" | sed "s/'//g" | sed "s/\;//g" >> $GITHUB_ENV
       - run: ./ocaml-setup.sh
       - run: cargo build
       - run: cargo test

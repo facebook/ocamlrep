@@ -1,0 +1,37 @@
+name: Buck build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  buck-build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          sudo apt-get update && sudo apt-get install opam
+          wget https://github.com/facebook/buck2/releases/download/latest/buck2-x86_64-unknown-linux-gnu.zst
+          zstd -d buck2-x86_64-unknown-linux-gnu.zst -o buck2
+        if: matrix.os == 'ubuntu'
+      - run: |
+          brew install opam
+          wget https://github.com/facebook/buck2/releases/download/latest/buck2-x86_64-apple-darwin.zst
+          zstd -d buck2-x86_64-apple-darwin.zst -o buck2
+        if: matrix.os == 'macos'
+      - run: |
+          chmod +x buck2
+          sudo ln -s $(pwd)/buck2 /usr/local/bin/buck2
+      - run: |
+          opam init --compiler=5.1.1 --disable-sandboxing -y
+          opam env | sed "s/ export .*//g" | sed "s/'//g" | sed "s/\;//g" >> $GITHUB_ENV
+      - run: ./ocaml-setup.sh
+      - run: cargo install --git https://github.com/facebookincubator/reindeer.git reindeer --force
+      - run: reindeer --third-party-dir shim/third-party/rust buckify
+      - run: buck2 build shim//third-party/... -v 2
+      - run: buck2 build root//... -v 2
