@@ -15,6 +15,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - uses: dtolnay/install-buck2@latest
+        with:
+          prelude-submodule: prelude
       - run: sudo apt-get update && sudo apt-get install opam
         if: matrix.os == 'ubuntu'
       - run: brew install opam
