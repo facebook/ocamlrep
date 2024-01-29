@@ -1,62 +1,71 @@
-# Building ocamlrep with Buck2
+# Building ocamlrep with Buck2 and Reindeer
+
+Instructions on how to setup a Buck2 build of ocamlrep. More Buck2 information & examples can be found on the [Buck2 website](https://buck2.build/).
 
 ## Setup
 
-These are things that need to be done once to get going.
-
 ### Install Buck2
 
-Buck2 provides prebuilt binaries. For example the following commands will install a prebuilt Buck2 and symlink it into `/usr/local/bin`.
-```bash
-  wget https://github.com/facebook/buck2/releases/download/latest/buck2-"$PLAT".zst
-  zstd -d buck2-"$PLAT".zst -o buck2
-  chmod +x buck2
-  sudo ln -s "$(pwd)"/buck2 /usr/local/bin/buck2
-```
-Valid values for `$PLAT` are `x86_64-unknown-linux-gnu` on Linux, `x86_64-apple-darwin` on x86 macOS and `aarch64-apple-darwin` on ARM macOS.
+#### Buck2 binary
+- Get the latest prebuilt `buck2` binary (and symlink it into '/usr/local/bin').
 
-It's also possible to install Buck2 from source into `~/.cargo/bin` like this.
-```bash
-  cargo install --git https://github.com/facebook/buck2.git buck2
-```
-*Note: If on aarch64-apple-darwin then be sure install to `brew install protobuf` and for the now it's necessary to add
-```bash
-  export BUCK2_BUILD_PROTOC=/opt/homebrew/opt/protobuf/bin/protoc
-  export BUCK2_BUILD_PROTOC_INCLUDE=/opt/homebrew/opt/protobuf/include
-```
-to the build environment.*
+     ```bash
+     wget https://github.com/facebook/buck2/releases/download/latest/buck2-"$PLAT".zst
+     zstd -d buck2-"$PLAT".zst -o buck2
+     chmod +x buck2
+     sudo ln -s "$(pwd)"/buck2 /usr/local/bin/buck2
+     ```
+*Valid values for `$PLAT` are `x86_64-unknown-linux-gnu` on Linux, `x86_64-apple-darwin` on x86 macOS and `aarch64-apple-darwin` on ARM macOS.*
 
-### Install Reindeer
+#### Buck2 prelude
+- Initialize a Buck2 prelude Git submodule.
 
-Install the `reindeer` binary from source into '~/.cargo/bin' like this.
-```bash
-    cargo install --git https://github.com/facebookincubator/reindeer.git reindeer
-```
+     ```bash
+     git submodule add https://github.com/facebook/buck2-prelude.git prelude
+     git submodule update --init
+     ```
+- Checkout the prelude at the right commit.
 
-*Note: Make sure after installing Buck2 and Reindeer to configure your `PATH` environment variable if necessary so they can be found.*
+     ```bash
+     prelude_hash=$(curl https://github.com/facebook/buck2/releases/download/latest/prelude_hash)
+     (cd prelude && git checkout $prelude_hash)
+     ```
 
-### Install the OCaml package Manager
+### Reindeer
+[Reindeer](https://github.com/facebookincubator/reindeer) is a tool to generate Buck2 rules for Rust crates.
 
-If you haven't already, install [opam](https://opam.ocaml.org/).
+- Install the `reindeer` binary from source (into '~/.cargo/bin').
 
-When opam has been installed execute `~/.ocaml-setup.sh` from the root of the distribution. The effect of `ocaml-setup.sh` is to create symlinks in `shim/third/party/ocaml` that point into the local opam installation.
+     ```bash
+     cargo install --git https://github.com/facebookincubator/reindeer.git reindeer
+     ```
 
+### OPAM
+- Initialize [OPAM](https://opam.ocaml.org/).
+
+     ```bash
+     opam init --compiler=5.1.1 --disable-sandboxing -y
+     eval $(opam env)
+     ```
+### Symlink OPAM
+- Run the script 'ocaml-setup.sh'.
+
+     ```bash
+     ./ocaml-setup.sh
+     ```
 *Note: The script assumes that [`OPAM_SWITCH_PREFIX`](https://opam.ocaml.org/doc/Manual.html#Switches) is set.*
 
-## Vendor sources & generate buck rules for ocamlrep's Rust dependencies
+### Generate BUCK rules for third-party Rust.
+- Run `reindeer buckify`.
 
-[Reindeer](https://github.com/facebookincubator/reindeer) is a a tool that imports Rust crates from crates.io and generates Buck2 build rules for them. Run it from the root of the ocamlrep repository like this.
-```bash
-    reindeer --third-party-dir shim/third-party/rust buckify
-```
+     ```bash
+     reindeer --third-party-dir shim/third-party/rust buckify
+     ```
 
-That's it, you're all set.
+## Build
 
-## Profit!
+- Build the complete set of ocamlrep targets.
 
-Run this command from the root of the repository to build all the targets you can.
-```
-    buck2 build root//...
-```
-
-More examples and more detail about building with Buck2 are available on the [Buck2 website](https://buck2.build/)!
+     ```bash
+     buck2 build root//...
+     ```
