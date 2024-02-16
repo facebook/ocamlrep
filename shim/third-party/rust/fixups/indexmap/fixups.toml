@@ -1,2 +1,2 @@
-buildscript = []
-cfgs = ["has_std"]
+[[buildscript]]
+[buildscript.rustc_flags]
