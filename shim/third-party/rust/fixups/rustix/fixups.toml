@@ -1,2 +1,2 @@
- [[buildscript]]
- [buildscript.rustc_flags]
+[[buildscript]]
+[buildscript.rustc_flags]
