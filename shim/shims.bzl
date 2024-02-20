@@ -6,7 +6,6 @@
 # of this source tree.
 
 # @lint-ignore FBCODEBZLADDLOADS
-
 _SELECT_TYPE = type(select({"DEFAULT": []}))
 
 def is_select(thing):
@@ -35,22 +34,27 @@ def rust_library(
         os_deps = None,
         test_deps = None,
         test_env = None,
+        test_os_deps = None,
         autocargo = None,
         unittests = None,
         mapped_srcs = {},
         visibility = ["PUBLIC"],
         **kwargs):
-    _unused = (test_deps, test_env, named_deps, autocargo, unittests)  # @unused
+    _unused = (test_deps, test_env, test_os_deps, named_deps, autocargo, unittests, visibility)  # @unused
     deps = _maybe_select_map(deps, _fix_deps)
     mapped_srcs = _maybe_select_map(mapped_srcs, _fix_mapped_srcs)
     if os_deps:
         deps += _select_os_deps(_fix_dict_deps(os_deps))
 
-    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    # Reset visibility because internal and external paths are different.
+    visibility = ["PUBLIC"]
+
+    # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
     native.rust_library(
         rustc_flags = rustc_flags + [_CFG_BUCK_OSS_BUILD],
         deps = deps,
         visibility = visibility,
+        mapped_srcs = mapped_srcs,
         **kwargs
     )
 
@@ -66,13 +70,99 @@ def rust_binary(
     _unused = (unittests, allocator, default_strip_mode, autocargo)  # @unused
     deps = _maybe_select_map(deps, _fix_deps)
 
-    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
     native.rust_binary(
         rustc_flags = rustc_flags + [_CFG_BUCK_OSS_BUILD],
         deps = deps,
         visibility = visibility,
         **kwargs
     )
+
+def rust_unittest(
+        rustc_flags = [],
+        deps = [],
+        visibility = ["PUBLIC"],
+        **kwargs):
+    deps = _maybe_select_map(deps, _fix_deps)
+
+    # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+    native.rust_test(
+        rustc_flags = rustc_flags + [_CFG_BUCK_OSS_BUILD],
+        deps = deps,
+        visibility = visibility,
+        **kwargs
+    )
+
+def rust_protobuf_library(
+        name,
+        srcs,
+        build_script,
+        protos,
+        build_env = None,
+        deps = [],
+        test_deps = None,
+        doctests = True):
+    if build_env:
+        build_env = {
+            k: _fix_dep_in_string(v)
+            for k, v in build_env.items()
+        }
+
+    build_name = name + "-build"
+    proto_name = name + "-proto"
+
+    rust_binary(
+        name = build_name,
+        srcs = [build_script],
+        crate_root = build_script,
+        deps = [
+            "fbsource//third-party/rust:tonic-build",
+            "//buck2/app/buck2_protoc_dev:buck2_protoc_dev",
+        ],
+    )
+
+    build_env = build_env or {}
+    build_env.update(
+        {
+            "PROTOC": "$(exe buck//third-party/proto:protoc)",
+            "PROTOC_INCLUDE": "$(location buck//third-party/proto:google_protobuf)",
+        },
+    )
+
+    # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+    native.genrule(
+        name = proto_name,
+        srcs = protos + [
+            "buck//third-party/proto:google_protobuf",
+        ],
+        out = ".",
+        cmd = "$(exe :" + build_name + ")",
+        env = build_env,
+    )
+
+    rust_library(
+        name = name,
+        srcs = srcs,
+        doctests = doctests,
+        env = {
+            # This is where prost looks for generated .rs files
+            "OUT_DIR": "$(location :{})".format(proto_name),
+        },
+        test_deps = test_deps,
+        deps = [
+            "fbsource//third-party/rust:prost",
+            "fbsource//third-party/rust:prost-types",
+        ] + (deps or []),
+    )
+
+    # For python tests only
+    for proto in protos:
+        # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+        native.export_file(
+            name = proto,
+            visibility = ["PUBLIC"],
+        )
+
 
 def ocaml_binary(
         deps = [],
@@ -87,10 +177,9 @@ def ocaml_binary(
         **kwargs
     )
 
-# Configuration that is used when building open source using Buck2 as
-# the build system. E.g. not applied either internally, or when using
-# Cargo to build the open source code. At the moment of writing,
-# mostly used to disable jemalloc.
+# Configuration that is used when building open source using Buck2 as the build system.
+# E.g. not applied either internally, or when using Cargo to build the open source code.
+# At the moment of writing, mostly used to disable jemalloc.
 _CFG_BUCK_OSS_BUILD = "--cfg=buck_oss_build"
 
 def _maybe_select_map(v, mapper):
@@ -122,8 +211,8 @@ def _fix_dict_deps(xss: list[(
     ]
 
 def _fix_mapped_srcs(xs: dict[str, str]):
-    # For reasons, this is source -> file path, which is the opposite
-    # of what it should be.
+    # For reasons, this is source -> file path, which is the opposite of what
+    # it should be.
     return {_fix_dep(k): v for (k, v) in xs.items()}
 
 def _fix_deps(xs: list[str]) -> list[str]:
@@ -133,12 +222,30 @@ def _fix_dep(x: str) -> [
     None,
     str,
 ]:
-    if x.startswith("fbcode//common/ocaml/interop/"):
+    if x == "//common/rust/shed/fbinit:fbinit":
+        return "fbsource//third-party/rust:fbinit"
+    elif x == "//common/rust/shed/sorted_vector_map:sorted_vector_map":
+        return "fbsource//third-party/rust:sorted_vector_map"
+    elif x == "//watchman/rust/watchman_client:watchman_client":
+        return "fbsource//third-party/rust:watchman_client"
+    elif x.startswith("fbsource//third-party/rust:") or x.startswith(":"):
+        return x
+    elif x.startswith("//buck2/facebook/"):
+        return None
+    elif x.startswith("//buck2/"):
+        return "root//" + x.removeprefix("//buck2/")
+    elif x.startswith("fbcode//common/ocaml/interop/"):
         return "root//" + x.removeprefix("fbcode//common/ocaml/interop/")
     elif x.startswith("fbcode//third-party-buck/platform010/build/supercaml"):
         return "shim//third-party/ocaml" + x.removeprefix("fbcode//third-party-buck/platform010/build/supercaml")
     else:
-        return x
+        fail("Dependency is unaccounted for `{}`.\n".format(x) +
+             "Did you forget 'oss-disable'?")
+
+def _fix_dep_in_string(x: str) -> str:
+    """Replace internal labels in string values such as env-vars."""
+    return (x
+        .replace("//buck2/", "root//"))
 
 # Do a nasty conversion of e.g. ("supercaml", None, "ocaml-dev") to
 # 'fbcode//third-party-buck/platform010/build/supercaml:ocaml-dev'
