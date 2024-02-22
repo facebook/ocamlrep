@@ -13,10 +13,10 @@ jobs:
         os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - uses: dtolnay/install-buck2@latest
         with:
-          prelude-submodule: prelude
+          submodules: 'true'
+      - uses: Swatinem/rust-cache@v2
+      - uses: facebook/install-dotslash@latest
       - run: sudo apt-get update && sudo apt-get install opam
         if: matrix.os == 'ubuntu'
       - run: brew install opam
@@ -27,4 +27,4 @@ jobs:
       - run: ./ocaml-setup.sh
       - run: cargo install --git https://github.com/facebookincubator/reindeer.git reindeer --force
       - run: reindeer --third-party-dir shim/third-party/rust buckify
-      - run: buck2 build root//... -v 2
+      - run: ./buck2 build root//... -v 2
