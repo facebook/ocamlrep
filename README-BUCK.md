@@ -21,14 +21,7 @@ Instructions on how to setup a Buck2 build of ocamlrep. More Buck2 information &
 - Initialize a Buck2 prelude Git submodule.
 
      ```bash
-     git submodule add https://github.com/facebook/buck2-prelude.git prelude
      git submodule update --init
-     ```
-- Checkout the prelude at the right commit.
-
-     ```bash
-     prelude_hash=$(curl https://github.com/facebook/buck2/releases/download/latest/prelude_hash)
-     (cd prelude && git checkout $prelude_hash)
      ```
 
 ### Reindeer
