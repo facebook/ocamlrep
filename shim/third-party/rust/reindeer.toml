@@ -9,7 +9,15 @@ precise_srcs = true
 # Include a public top-level target which depends on all other targets.
 include_top_level = true
 
+[cargo]
+# Support Cargo's unstable "artifact dependencies" functionality, RFC 3028.
+bindeps = true
+
 [buck]
+# Name of the generated file.
+file_name = "BUCK"
+
+# Rules used for various kinds of targets.
 rust_library = "cargo.rust_library"
 rust_binary = "cargo.rust_binary"
 prebuilt_cxx_library = "third_party_rust_prebuilt_cxx_library"
