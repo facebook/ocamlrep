@@ -27,5 +27,4 @@ jobs:
       - run: ./ocaml-setup.sh
       - run: cargo install --git https://github.com/facebookincubator/reindeer.git reindeer --force
       - run: reindeer --third-party-dir shim/third-party/rust buckify
-      - run: buck2 build shim//third-party/... -v 2
       - run: buck2 build root//... -v 2
