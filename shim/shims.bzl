@@ -163,7 +163,6 @@ def rust_protobuf_library(
             visibility = ["PUBLIC"],
         )
 
-
 def ocaml_binary(
         deps = [],
         visibility = ["PUBLIC"],
