@@ -1,0 +1,67 @@
+#!/usr/bin/env dotslash
+
+{
+  "name": "buck2",
+  "platforms": {
+    "macos-aarch64": {
+      "size": 22533781,
+      "hash": "blake3",
+      "digest": "aaba556d27dc46761e902369b816b70f09afe1f45aa47a14c42dcd24d3a0f0b9",
+      "format": "zst",
+      "path": "buck2-aarch64-apple-darwin",
+      "providers": [
+        {
+          "url": "https://github.com/facebook/buck2/releases/download/2024-02-15/buck2-aarch64-apple-darwin.zst"
+        }
+      ]
+    },
+    "linux-aarch64": {
+      "size": 25432740,
+      "hash": "blake3",
+      "digest": "d6c6f2ac8af2a6c7be9c4a7060f9b127d5cd05111e9db8cb944952ab878d6ae4",
+      "format": "zst",
+      "path": "buck2-aarch64-unknown-linux-gnu",
+      "providers": [
+        {
+          "url": "https://github.com/facebook/buck2/releases/download/2024-02-15/buck2-aarch64-unknown-linux-gnu.zst"
+        }
+      ]
+    },
+    "macos-x86_64": {
+      "size": 24245510,
+      "hash": "blake3",
+      "digest": "572ee45cf8bb403c15ce2c0e10f5b64600d49218669b426ea033930d5e545504",
+      "format": "zst",
+      "path": "buck2-x86_64-apple-darwin",
+      "providers": [
+        {
+          "url": "https://github.com/facebook/buck2/releases/download/2024-02-15/buck2-x86_64-apple-darwin.zst"
+        }
+      ]
+    },
+    "windows-x86_64": {
+      "size": 19938079,
+      "hash": "blake3",
+      "digest": "2b46a16882a1bd9987643cd9d5fa690ddd765b9679cef1b17c5af9de94580ced",
+      "format": "zst",
+      "path": "buck2-x86_64-pc-windows-msvc.exe",
+      "providers": [
+        {
+          "url": "https://github.com/facebook/buck2/releases/download/2024-02-15/buck2-x86_64-pc-windows-msvc.exe.zst"
+        }
+      ]
+    },
+    "linux-x86_64": {
+      "size": 25502861,
+      "hash": "blake3",
+      "digest": "0a6131cc230cc43493b9a98b9ce12498e37f891a1daed0c83041d96a279aba3e",
+      "format": "zst",
+      "path": "buck2-x86_64-unknown-linux-gnu",
+      "providers": [
+        {
+          "url": "https://github.com/facebook/buck2/releases/download/2024-02-15/buck2-x86_64-unknown-linux-gnu.zst"
+        }
+      ]
+    }
+  }
+}
