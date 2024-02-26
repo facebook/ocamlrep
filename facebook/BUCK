@@ -1,0 +1,19 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary", "buck_sh_test")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+
+oncall("fbcode_entropy_wardens_common")
+
+buck_sh_binary(
+    name = "ocamlrep-cargo-check",
+    main = "ocamlrep_cargo_check.sh",
+)
+
+buck_sh_test(
+    name = "ocamlrep-cargo-test",
+    args = [
+        "--autocargo=$(exe fbcode//common/rust/cargo_from_buck/bin:autocargo)",
+        "--platform={}".format(platform_utils.get_platform_for_current_buildfile()),
+    ],
+    contacts = ["oncall+hack@xmail.facebook.com"],
+    test = ":ocamlrep-cargo-check",
+)
