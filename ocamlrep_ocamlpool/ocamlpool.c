@@ -387,9 +387,13 @@ value ocamlpool_reserve_block(tag_t tag, mlsize_t wosize) {
       wosize,
       tag,
 #if OCAML_VERSION >= 50100
-      0, /* no reserved bits */
+      0 /* no reserved bits */
 #endif
-      0 /* not pinned*/);
+#if OCAML_VERSION < 50200
+      ,
+      0 /* not pinned*/
+#endif
+  );
   d->allocated_words += Whsize_wosize(wosize);
 
   if (p == NULL) {
