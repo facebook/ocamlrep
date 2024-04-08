@@ -59,7 +59,7 @@ impl Rewriter {
     }
 
     fn rewrite_type_path(&self, path: &mut ir::TypePath) {
-        match path.modules.get(0).map(ir::ModuleName::as_str) {
+        match path.modules.first().map(ir::ModuleName::as_str) {
             Some("crate" | "super") => {
                 path.modules.remove(0);
             }

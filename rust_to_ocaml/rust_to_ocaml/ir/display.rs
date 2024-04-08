@@ -263,10 +263,7 @@ impl Display for ir::FieldName {
     }
 }
 
-fn write_toplevel_doc_comment(
-    f: &mut std::fmt::Formatter<'_>,
-    doc: &Vec<String>,
-) -> std::fmt::Result {
+fn write_toplevel_doc_comment(f: &mut std::fmt::Formatter<'_>, doc: &[String]) -> std::fmt::Result {
     if doc.is_empty() {
         return Ok(());
     }
@@ -284,7 +281,7 @@ fn write_toplevel_doc_comment(
 
 fn write_field_or_variant_doc_comment(
     f: &mut std::fmt::Formatter<'_>,
-    doc: &Vec<String>,
+    doc: &[String],
 ) -> std::fmt::Result {
     if doc.is_empty() {
         return Ok(());
