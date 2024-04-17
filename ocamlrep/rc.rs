@@ -77,11 +77,13 @@ impl<T: Clone> Clone for OcamlValueCache<T> {
 
 #[allow(clippy::partialeq_ne_impl)]
 impl<T: PartialEq> PartialEq for OcamlValueCache<T> {
+    #[allow(clippy::unconditional_recursion)]
     #[inline(always)]
     fn eq(&self, other: &OcamlValueCache<T>) -> bool {
         self.value.eq(&other.value)
     }
 
+    #[allow(clippy::unconditional_recursion)]
     #[inline(always)]
     fn ne(&self, other: &OcamlValueCache<T>) -> bool {
         self.value.ne(&other.value)
