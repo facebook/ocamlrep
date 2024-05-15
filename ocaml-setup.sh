@@ -24,7 +24,7 @@ set -u
 
 # Link 'third-party/ocaml/opam'.
 if [ ! -L shim/third-party/ocaml/opam ]; then
-  (cd shim/third-party/ocaml && ln -s "$OPAM_SWITCH_PREFIX" opam)
+  (cd shim/third-party/ocaml && rm -rf opam && ln -s "$OPAM_SWITCH_PREFIX" opam)
 else
     echo "Link 'shim/third-party/ocaml/opam' exists. To overwrite it, first remove it and run $0 again"
 fi
