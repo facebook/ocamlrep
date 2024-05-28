@@ -22,6 +22,7 @@ pub enum FromError {
     ExpectedBool(isize),
     ExpectedChar(isize),
     ExpectedInt(usize),
+    Expected63BitInt(isize),
     ExpectedUnit(isize),
     ExpectedZeroTag(u8),
     IntOutOfRange(TryFromIntError),
@@ -62,6 +63,11 @@ impl fmt::Display for FromError {
             ExpectedInt(x) => {
                 write!(f, "Expected integer value, but got block pointer {:p}", x)
             }
+            Expected63BitInt(x) => write!(
+                f,
+                "Expected integer value between -2^(n-2) and 2^(n-2)-1, where n is the number of bits in isize, but got {}",
+                x
+            ),
             ExpectedUnit(x) => write!(f, "Expected (), but got {}", x),
             ExpectedZeroTag(x) => write!(
                 f,
@@ -101,6 +107,7 @@ impl Error for FromError {
             | ExpectedBool(..)
             | ExpectedChar(..)
             | ExpectedInt(..)
+            | Expected63BitInt(..)
             | ExpectedUnit(..)
             | ExpectedZeroTag(..)
             | NullaryVariantTagOutOfRange { .. }

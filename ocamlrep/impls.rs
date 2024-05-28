@@ -24,6 +24,8 @@ use bstr::BString;
 use bumpalo::Bump;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::block;
 use crate::from;
@@ -60,6 +62,58 @@ impl FromOcamlRep for () {
 }
 
 trivial_from_in_impl!(());
+
+/// Represents an integer in the range [-2^(n-2); 2^(n-2)[,
+/// which can be safely converted to OCaml int without changing
+/// the represented int value.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Debug)]
+pub struct OCamlInt(isize);
+
+impl OCamlInt {
+    const NBITS: usize = std::mem::size_of::<isize>() * 8;
+
+    /// Creates an OCamlInt from an isize. Error if the
+    /// isize is outside the safe range [-2^(n-2); 2^(n-2)[.
+    pub fn try_new(i: isize) -> Result<Self, FromError> {
+        // Check that the two most significant bits are the same.
+        let msbs_mask: usize = 0b11 << (Self::NBITS - 2);
+        let msbs: usize = (i as usize) & msbs_mask;
+        if msbs == 0 || msbs == msbs_mask {
+            Ok(Self(i))
+        } else {
+            Err(FromError::Expected63BitInt(i))
+        }
+    }
+
+    /// Creates an OCamlInt from an isize.
+    /// This always succeeds, and might flip the MSB (the sign bit)
+    /// to bring the integer value in the safe range [-2^(n-2); 2^(n-2)[.
+    /// This is useful to preserve ordering during conversion:
+    /// For example, you should probably never convert a BTreeSet<isize>,
+    /// but convert a BTreeSet<OCamlInt> instead.
+    pub fn new_erase_msb(i: isize) -> Self {
+        // This could in theory be done with `(i << 1) >> 1`,
+        // But that relies on obscure rules for how << and >> operate on isize.
+        // So we go the explicit way
+        let n = Self::NBITS;
+        let msb2 = i & (1 << (n - 2));
+        let with_reset_msb = i & !(1 << (n - 1));
+        let res = with_reset_msb | (msb2 << 1);
+        Self(res)
+    }
+}
+
+impl ToOcamlRep for OCamlInt {
+    fn to_ocamlrep<'a, A: Allocator>(&'a self, _alloc: &'a A) -> Value<'a> {
+        Value::int(self.0)
+    }
+}
+
+impl FromOcamlRep for OCamlInt {
+    fn from_ocamlrep(value: Value<'_>) -> Result<Self, FromError> {
+        from::expect_int(value).map(Self)
+    }
+}
 
 impl ToOcamlRep for isize {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, _alloc: &'a A) -> Value<'a> {
