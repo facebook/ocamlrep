@@ -29,6 +29,9 @@ rust_library(
                 "build-dependencies": {
                     "cc": {"version": "1.0.78"},
                 },
+                "dependencies": {
+                    "bumpalo": {"features": ["collections"]},
+                },
             },
             "package": {
                 "build": "build.rs",

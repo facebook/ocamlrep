@@ -10,6 +10,13 @@ rust_library(
         "cargo_target_config": {
             "doctest": False,
         },
+        "cargo_toml_config": {
+            "dependencies_override": {
+                "dependencies": {
+                    "bumpalo": {"features": ["collections"]},
+                },
+            },
+        },
     },
     doctests = False,
     rustc_flags = RUST_FLAGS_2018,

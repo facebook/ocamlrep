@@ -102,6 +102,13 @@ rust_library(
             ],
             "doctest": False,
         },
+        "cargo_toml_config": {
+            "dependencies_override": {
+                "dev-dependencies": {
+                    "bumpalo": {"features": ["collections"]},
+                },
+            },
+        },
         "cargo_toml_dir": "test_from_ocamlrep_in",
     },
     rustc_flags = RUST_FLAGS_2018,
