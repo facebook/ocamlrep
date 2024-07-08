@@ -5,10 +5,9 @@ load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 oncall("hack")
 
 cpp_library(
-    # @autodeps-skip
     name = "ocaml_version",
     srcs = ["ocaml_version.c"],
-    external_deps = [
+    exported_external_deps = [
         ("supercaml", None, "ocaml-dev"),
     ],
 )
