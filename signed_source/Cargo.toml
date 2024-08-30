@@ -14,7 +14,7 @@ path = "signed_source.rs"
 doctest = false
 
 [dependencies]
-bstr = { version = "1.6.2", features = ["serde", "std", "unicode"] }
+bstr = { version = "1.10.0", features = ["serde", "std", "unicode"] }
 hex = "0.4.3"
 md-5 = "0.10"
 once_cell = "1.12"
