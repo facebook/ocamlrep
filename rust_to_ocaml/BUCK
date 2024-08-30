@@ -20,7 +20,7 @@ rust_binary(
         "fbsource//third-party/rust:anyhow",
         "fbsource//third-party/rust:clap-3",
         "fbsource//third-party/rust:convert_case",
-        "fbsource//third-party/rust:derive_more-1",
+        "fbsource//third-party/rust:derive_more",
         "fbsource//third-party/rust:indexmap",
         "fbsource//third-party/rust:serde",
         "fbsource//third-party/rust:syn1",
