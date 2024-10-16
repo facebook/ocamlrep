@@ -13,8 +13,6 @@ jobs:
         os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: 'true'
       - uses: Swatinem/rust-cache@v2
       - uses: facebook/install-dotslash@latest
       - run: sudo apt-get update && sudo apt-get install opam
