@@ -61,7 +61,7 @@ impl Chunk {
 // absurd amount).
 //
 // If we add more allocators, we might want to rethink this strategy.
-static NEXT_GENERATION: AtomicUsize = AtomicUsize::new(usize::max_value() / 2);
+static NEXT_GENERATION: AtomicUsize = AtomicUsize::new(usize::MAX / 2);
 
 /// An [`Allocator`](trait.Allocator.html) which builds values in Rust-managed
 /// memory. The memory is freed when the Arena is dropped.

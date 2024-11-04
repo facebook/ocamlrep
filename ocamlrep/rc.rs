@@ -27,7 +27,7 @@ use crate::ToOcamlRep;
 use crate::Value;
 
 const UNIT: usize = crate::value::isize_to_ocaml_int(0);
-const INVALID_GENERATION: usize = usize::max_value();
+const INVALID_GENERATION: usize = usize::MAX;
 
 struct OcamlValueCache<T> {
     forward_pointer: Cell<usize>,
