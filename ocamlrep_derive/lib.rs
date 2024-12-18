@@ -33,6 +33,15 @@ decl_derive!([ToOcamlRep, attributes(rust_to_ocaml, ocamlrep)] => derive_to_ocam
 decl_derive!([FromOcamlRep, attributes(rust_to_ocaml, ocamlrep)] => derive_from_ocamlrep);
 decl_derive!([FromOcamlRepIn, attributes(rust_to_ocaml, ocamlrep)] => derive_from_ocamlrep_in);
 
+fn workaround_non_local_def(impl_block: TokenStream) -> TokenStream {
+    // We need to upgrade synstructure to remove this warning, but doing so will also require upgrading
+    // to syn2 and rewriting to handle the API changes.
+    quote! {
+        #[allow(non_local_definitions)]
+        #impl_block
+    }
+}
+
 fn derive_to_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
     // remove #[ocamlrep(skip)]
     for variant in s.variants_mut() {
@@ -47,7 +56,7 @@ fn derive_to_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
     s.add_bounds(synstructure::AddBounds::Generics);
 
     let to_body = to_ocamlrep_body(&s);
-    s.gen_impl(quote! {
+    workaround_non_local_def(s.gen_impl(quote! {
         gen impl ::ocamlrep::ToOcamlRep for @Self {
             fn to_ocamlrep<'__ocamlrep_derive_allocator, Alloc: ::ocamlrep::Allocator>(
                 &'__ocamlrep_derive_allocator self,
@@ -57,21 +66,21 @@ fn derive_to_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
                 match self { #to_body }
             }
         }
-    })
+    }))
 }
 
 fn derive_from_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
     s.add_bounds(synstructure::AddBounds::Generics);
 
     let from_body = from_ocamlrep_body(&mut s);
-    s.gen_impl(quote! {
+    workaround_non_local_def(s.gen_impl(quote! {
         gen impl ::ocamlrep::FromOcamlRep for @Self {
             fn from_ocamlrep(value: ::ocamlrep::Value<'_>) -> ::std::result::Result<Self, ::ocamlrep::FromError> {
                 use ::ocamlrep::FromOcamlRep;
                 #from_body
             }
         }
-    })
+    }))
 }
 
 fn derive_from_ocamlrep_in(mut s: synstructure::Structure<'_>) -> TokenStream {
@@ -84,7 +93,7 @@ fn derive_from_ocamlrep_in(mut s: synstructure::Structure<'_>) -> TokenStream {
             .map(|t| quote!(#t : ::ocamlrep::FromOcamlRep,))
             .collect();
         let from_body = from_ocamlrep_body(&mut s);
-        return s.gen_impl(quote! {
+        return workaround_non_local_def(s.gen_impl(quote! {
             gen impl<'__ocamlrep_derive_allocator> ::ocamlrep::FromOcamlRepIn<'__ocamlrep_derive_allocator> for @Self
             where #tparams_implement_from_ocamlrep
             {
@@ -96,7 +105,7 @@ fn derive_from_ocamlrep_in(mut s: synstructure::Structure<'_>) -> TokenStream {
                     #from_body
                 }
             }
-        });
+        }));
     }
 
     // Constrain the lifetime of `'__ocamlrep_derive_allocator` to be equal to
@@ -118,7 +127,7 @@ fn derive_from_ocamlrep_in(mut s: synstructure::Structure<'_>) -> TokenStream {
         .collect();
 
     let from_in_body = from_ocamlrep_in_body(&mut s);
-    s.gen_impl(quote! {
+    workaround_non_local_def(s.gen_impl(quote! {
         gen impl<'__ocamlrep_derive_allocator> ::ocamlrep::FromOcamlRepIn<'__ocamlrep_derive_allocator> for @Self
         where
             #tparams_implement_trivialdrop #lifetimes
@@ -131,7 +140,7 @@ fn derive_from_ocamlrep_in(mut s: synstructure::Structure<'_>) -> TokenStream {
                 #from_in_body
             }
         }
-    })
+    }))
 }
 
 fn to_ocamlrep_body(s: &synstructure::Structure<'_>) -> TokenStream {
@@ -516,6 +525,7 @@ mod tests {
         assert_pat_eq::<anyhow::Error>(
             Ok(derive_to_ocamlrep(Structure::new(&syn::parse2(input)?))),
             quote! {
+                #[allow(non_local_definitions)]
                 #[allow(non_upper_case_globals)]
                 const _DERIVE_ocamlrep_ToOcamlRep_FOR_A: () = {
                     impl ::ocamlrep::ToOcamlRep for A {
@@ -560,6 +570,7 @@ mod tests {
         assert_pat_eq::<anyhow::Error>(
             Ok(derive_from_ocamlrep(Structure::new(&syn::parse2(input)?))),
             quote! {
+                #[allow(non_local_definitions)]
                 #[allow(non_upper_case_globals)]
                 const _DERIVE_ocamlrep_FromOcamlRep_FOR_A: () = {
                     impl ::ocamlrep::FromOcamlRep for A {
