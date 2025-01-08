@@ -577,9 +577,11 @@ impl<'a, K: FromOcamlRep + Ord, V: FromOcamlRep> FromOcamlRepIn<'a> for BTreeMap
 }
 
 /// Given an iterator which emits key-value pairs (already converted to OCaml
-/// values), build an OCaml Map containing those bindings. The iterator must
-/// emit each key only once. The key-value pairs must be emitted in ascending
-/// order, sorted by key. The iterator must emit exactly `size` pairs.
+/// values), build an OCaml Map containing those bindings.
+///
+/// The iterator must emit each key only once. The key-value pairs
+/// must be emitted in ascending order, sorted by key. The iterator
+/// must emit exactly `size` pairs.
 pub fn sorted_iter_to_ocaml_map<'a, A: Allocator>(
     iter: &mut impl Iterator<Item = (Value<'a>, Value<'a>)>,
     alloc: &'a A,
@@ -691,9 +693,11 @@ impl<'a, T: FromOcamlRep + Ord> FromOcamlRepIn<'a> for BTreeSet<T> {
     }
 }
 
-/// Build an OCaml Set containing all items emitted by the given iterator. The
-/// iterator must emit each item only once. The items must be emitted in
-/// ascending order. The iterator must emit exactly `size` items.
+/// Build an OCaml Set containing all items emitted by the given iterator.
+///
+/// The iterator must emit each item only once. The items must be
+/// emitted in ascending order. The iterator must emit exactly `size`
+/// items.
 pub fn sorted_iter_to_ocaml_set<'a, A: Allocator>(
     iter: &mut impl Iterator<Item = Value<'a>>,
     alloc: &'a A,

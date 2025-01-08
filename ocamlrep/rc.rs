@@ -94,7 +94,9 @@ impl<T: Eq> Eq for OcamlValueCache<T> {}
 
 /// A single-threaded reference-counting pointer type, which, as a performance
 /// optimization, can cache the result of converting the pointed-to value to an
-/// OCaml value. `RcOc` stands for "reference counted with Ocaml-value cache".
+/// OCaml value.
+///
+/// `RcOc` stands for "reference counted with Ocaml-value cache".
 ///
 /// Internally uses `std::rc::Rc`, so restrictions on `Rc` also apply to `RcOc`.
 /// It is encouraged to follow `Rc` conventions (such as preferring the use of

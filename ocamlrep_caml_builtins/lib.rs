@@ -8,6 +8,8 @@ use ocamlrep_custom::CustomOperations;
 use serde::Deserialize;
 use serde::Serialize;
 
+/// `Int64.t` conversion guide.
+///
 /// Communicates that when the wrapped i64 is converted to an OCaml
 /// representation, the type `Int64.t` (representing a boxed 64-bit integer)
 /// should be used rather than the type `int` (which, on 64-bit architectures,

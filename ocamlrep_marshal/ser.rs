@@ -114,7 +114,7 @@ const BITS_WORD: usize = 8 * std::mem::size_of::<usize>();
 
 #[inline]
 const fn bitvect_size(n: usize) -> usize {
-    (n + BITS_WORD - 1) / BITS_WORD
+    n.div_ceil(BITS_WORD)
 }
 
 const POS_TABLE_INIT_SIZE_LOG2: usize = 8;

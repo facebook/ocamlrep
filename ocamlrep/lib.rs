@@ -481,7 +481,7 @@ pub trait Allocator: Sized {
     /// buffer and the block.
     fn byte_string_with_len(&self, len: usize) -> BlockBytes<'_> {
         let word_size = std::mem::size_of::<*const u8>();
-        let words = (len + 1 /*null-ending*/ + (word_size - 1)/*rounding*/) / word_size;
+        let words = (len + 1/*null-ending*/).div_ceil(word_size);
         let length = words * word_size;
         let mut block = self.block_with_size_and_tag(words, STRING_TAG);
         unsafe {

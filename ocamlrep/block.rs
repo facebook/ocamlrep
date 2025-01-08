@@ -12,8 +12,10 @@ use crate::Allocator;
 use crate::Value;
 
 /// Blocks with tags greater than or equal to NO_SCAN_TAG contain binary data,
-/// and are not scanned by the garbage collector. Likewise, we must avoid
-/// interpreting the fields of blocks with such tags as Values.
+/// and are not scanned by the garbage collector.
+///
+/// Likewise, we must avoid interpreting the fields of blocks with
+/// such tags as Values.
 pub const NO_SCAN_TAG: u8 = 251;
 pub const FORWARD_TAG: u8 = 250;
 pub const INFIX_TAG: u8 = 249;
