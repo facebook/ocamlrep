@@ -1,6 +1,6 @@
 [cells]
-gh_facebook_ocamlrep = .
-shim_DISABLED = shim
+  gh_facebook_ocamlrep = .
+  gh_facebook_buck2_shims_meta = shim
 
 [cell_aliases]
-root = gh_facebook_ocamlrep
+  root = gh_facebook_ocamlrep
