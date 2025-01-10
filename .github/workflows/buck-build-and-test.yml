@@ -1,8 +1,8 @@
 name: Buck build and test
 on:
-  # push:
-  # pull_request:
-  # workflow_dispatch:
+  push:
+  pull_request:
+  workflow_dispatch:
 jobs:
   buck-build-and-test:
     name: ${{ matrix.os }}

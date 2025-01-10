@@ -4,3 +4,7 @@
 
 [cell_aliases]
   root = gh_facebook_ocamlrep
+
+[oss]
+  internal_cell = fbcode
+  stripped_root_dirs = common/ocaml/interop
