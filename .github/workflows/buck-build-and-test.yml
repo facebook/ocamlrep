@@ -20,7 +20,7 @@ jobs:
       - run: brew install opam
         if: matrix.os == 'macos'
       - run: |
-          opam init --compiler=5.2.0 --disable-sandboxing -y
+          opam init --compiler=5.3.0 --disable-sandboxing -y
           opam env | sed -e "s/ export .*//g" -e "s/'//g" -e "s/\;//g" >> $GITHUB_ENV
       - run: ./ocaml-setup.sh
       - run: cargo install --git https://github.com/facebookincubator/reindeer.git reindeer --force
