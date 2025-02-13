@@ -19,4 +19,4 @@ anyhow = "1.0.95"
 cargo_test_utils = { path = "../../cargo_test_utils" }
 ocamlrep_ocamlpool = { path = ".." }
 once_cell = "1.12"
-tempfile = "3.8"
+tempfile = "3.15"
