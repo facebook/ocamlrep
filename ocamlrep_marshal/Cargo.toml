@@ -17,7 +17,7 @@ doctest = false
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
-bitflags = { version = "2.6", features = ["serde"] }
+bitflags = { version = "2.6", features = ["serde", "std"], default-features = false }
 ocamlrep = { path = "../ocamlrep" }
 
 [build-dependencies]
