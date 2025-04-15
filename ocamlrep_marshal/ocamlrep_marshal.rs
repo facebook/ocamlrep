@@ -10,5 +10,5 @@ mod intext; // c.f. 'runtime/caml/intext.h'
 mod ser; // serialize; c.f. 'runtime/extern.c'
 
 pub use deser::input_value;
-pub use ser::output_value;
 pub use ser::ExternFlags;
+pub use ser::output_value;

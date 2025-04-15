@@ -27,14 +27,14 @@ use indexmap::IndexSet;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::block;
-use crate::from;
 use crate::Allocator;
 use crate::FromError;
 use crate::FromOcamlRep;
 use crate::FromOcamlRepIn;
 use crate::ToOcamlRep;
 use crate::Value;
+use crate::block;
+use crate::from;
 
 macro_rules! trivial_from_in_impl {
     ($ty:ty) => {

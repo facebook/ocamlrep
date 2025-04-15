@@ -6,9 +6,9 @@
 #![allow(unused_crate_dependencies)]
 #![feature(exit_status_error)]
 
+use ocamlrep_ocamlpool::FromOcamlRep;
 use ocamlrep_ocamlpool::ocaml_ffi;
 use ocamlrep_ocamlpool::ocaml_registered_function;
-use ocamlrep_ocamlpool::FromOcamlRep;
 
 extern "C" {
     fn ocamlpool_enter();

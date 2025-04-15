@@ -7,9 +7,9 @@
 
 use std::cell::Cell;
 
-use ocamlrep_custom::caml_serialize_default_impls;
 use ocamlrep_custom::CamlSerialize;
 use ocamlrep_custom::Custom;
+use ocamlrep_custom::caml_serialize_default_impls;
 use ocamlrep_ocamlpool::ocaml_ffi;
 
 pub struct Counter(Cell<isize>);

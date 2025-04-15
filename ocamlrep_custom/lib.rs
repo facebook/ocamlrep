@@ -14,13 +14,13 @@ use std::os::raw::c_int;
 use std::os::raw::c_void;
 use std::rc::Rc;
 
-use ocamlrep::from;
 use ocamlrep::Allocator;
+use ocamlrep::CUSTOM_TAG;
 use ocamlrep::FromError;
 use ocamlrep::FromOcamlRep;
 use ocamlrep::ToOcamlRep;
 use ocamlrep::Value;
-use ocamlrep::CUSTOM_TAG;
+use ocamlrep::from;
 use ocamlrep_ocamlpool::catch_unwind;
 
 extern "C" {
@@ -83,9 +83,9 @@ impl CustomOperations {
 /// ```rust
 /// use std::cell::Cell;
 ///
-/// use ocamlrep_custom::caml_serialize_default_impls;
 /// use ocamlrep_custom::CamlSerialize;
 /// use ocamlrep_custom::Custom;
+/// use ocamlrep_custom::caml_serialize_default_impls;
 /// use ocamlrep_ocamlpool::ocaml_ffi;
 ///
 /// pub struct Counter(Cell<isize>);

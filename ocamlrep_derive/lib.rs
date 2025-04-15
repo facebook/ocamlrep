@@ -10,9 +10,9 @@ use quote::quote;
 use syn::Attribute;
 use syn::Meta;
 use syn::NestedMeta;
-use synstructure::decl_derive;
 use synstructure::BindingInfo;
 use synstructure::VariantInfo;
+use synstructure::decl_derive;
 
 // The rust_to_ocaml_attr crate provides the rust_to_ocaml attribute macro,
 // which is intended to be consumed by the rust_to_ocaml codegen tool. It

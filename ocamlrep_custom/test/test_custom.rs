@@ -7,9 +7,9 @@ use std::cell::RefCell;
 use std::io::Write;
 use std::rc::Rc;
 
-use ocamlrep_custom::caml_serialize_default_impls;
 use ocamlrep_custom::CamlSerialize;
 use ocamlrep_custom::Custom;
+use ocamlrep_custom::caml_serialize_default_impls;
 use ocamlrep_ocamlpool::ocaml_ffi;
 
 struct DropTest(Rc<RefCell<bool>>);
