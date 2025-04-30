@@ -63,7 +63,7 @@ fn derive_to_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
                 arena: &'__ocamlrep_derive_allocator Alloc,
             ) -> ::ocamlrep::Value<'__ocamlrep_derive_allocator> {
                 use ::ocamlrep::Allocator;
-                match self { #to_body }
+                match *self { #to_body }
             }
         }
     }))

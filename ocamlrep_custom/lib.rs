@@ -23,7 +23,7 @@ use ocamlrep::Value;
 use ocamlrep::from;
 use ocamlrep_ocamlpool::catch_unwind;
 
-extern "C" {
+unsafe extern "C" {
     fn caml_register_custom_operations(ops: *const CustomOperations);
     fn caml_serialize_block_1(data: *const u8, len: usize);
     fn caml_serialize_int_8(x: i64);
@@ -409,8 +409,10 @@ pub fn operations_helper<T: CamlSerialize>() -> CustomOperations {
 /// Should not be used directly. Interacts with the OCaml runtime and is
 /// thus unsafe to call in a multi-threaded context.
 pub unsafe fn register_helper<T>(ops: &'static CustomOperations) {
-    // Safety: operations struct has a static lifetime, it will live forever!
-    caml_register_custom_operations(ops as *const CustomOperations);
+    unsafe {
+        // Safety: operations struct has a static lifetime, it will live forever!
+        caml_register_custom_operations(ops as *const CustomOperations);
+    }
 }
 
 /// Helper function used by `operations_helper`. Returns a finalizer for custom

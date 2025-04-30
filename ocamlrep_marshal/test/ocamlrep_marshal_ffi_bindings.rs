@@ -8,12 +8,12 @@ use ocamlrep::FromOcamlRep;
 
 type OcamlValue = usize;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "C" fn ocamlrep_marshal_output_value_to_string(
     v: OcamlValue,
     flags: OcamlValue,
 ) -> OcamlValue {
-    ocamlrep_ocamlpool::catch_unwind(|| {
+    ocamlrep_ocamlpool::catch_unwind(|| unsafe {
         let v = ocamlrep::Value::from_bits(v);
         let flags = ocamlrep_marshal::ExternFlags::from_ocaml(flags).unwrap();
         let mut cursor = std::io::Cursor::new(vec![]);
@@ -22,12 +22,12 @@ unsafe extern "C" fn ocamlrep_marshal_output_value_to_string(
     })
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "C" fn ocamlrep_marshal_input_value_from_string(
     str: OcamlValue,
     ofs: OcamlValue,
 ) -> OcamlValue {
-    ocamlrep_ocamlpool::catch_unwind(|| {
+    ocamlrep_ocamlpool::catch_unwind(|| unsafe {
         let offset = usize::from_ocaml(ofs).unwrap();
         let str = ocamlrep::bytes_from_ocamlrep(ocamlrep::Value::from_bits(str)).unwrap();
         let str = &str[offset..];

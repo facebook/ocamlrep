@@ -64,7 +64,7 @@ impl UnsafeOcamlPtr {
     /// the value is rooted).
     #[inline(always)]
     pub const unsafe fn as_value<'a>(self) -> Value<'a> {
-        Value::from_bits(self.0.get())
+        unsafe { Value::from_bits(self.0.get()) }
     }
 }
 

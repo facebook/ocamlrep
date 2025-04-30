@@ -143,150 +143,151 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
     }
 
     unsafe fn intern_rec(&mut self, mut dest: *mut Value<'a>) {
-        const READ_BLOCK_LABEL: u64 = 16649699497103515194;
-        const READ_STRING_LABEL: u64 = 11970676656440271524;
-        const READ_SHARED_LABEL: u64 = 8656139126282042408;
-        const READ_DOUBLE_ARRAY_LABEL: u64 = 8966088013221564425;
-        const NOTHING_TO_DO_LABEL: u64 = 8288085890650723895;
+        unsafe {
+            const READ_BLOCK_LABEL: u64 = 16649699497103515194;
+            const READ_STRING_LABEL: u64 = 11970676656440271524;
+            const READ_SHARED_LABEL: u64 = 8656139126282042408;
+            const READ_DOUBLE_ARRAY_LABEL: u64 = 8966088013221564425;
+            const NOTHING_TO_DO_LABEL: u64 = 8288085890650723895;
 
-        let mut current_block: u64;
-        let mut header: usize;
-        let mut code: u8;
+            let mut current_block: u64;
+            let mut header: usize;
+            let mut code: u8;
 
-        let mut tag: u8 = 0;
-        let mut size: usize = 0;
-        let mut len: usize = 0;
-        let mut v: Value<'a> = Value::from_bits(0);
-        let mut ofs: usize = 0;
+            let mut tag: u8 = 0;
+            let mut size: usize = 0;
+            let mut len: usize = 0;
+            let mut v: Value<'a> = Value::from_bits(0);
+            let mut ofs: usize = 0;
 
-        // Initially let's try to read the first object from the stream
-        self.stack.push(InternItem { dest, arg: 1 });
+            // Initially let's try to read the first object from the stream
+            self.stack.push(InternItem { dest, arg: 1 });
 
-        // The un-marshaler loop, the recursion is unrolled
-        while let Some(top) = self.stack.last_mut() {
-            // Interpret next item on the stack
-            dest = top.dest;
+            // The un-marshaler loop, the recursion is unrolled
+            while let Some(top) = self.stack.last_mut() {
+                // Interpret next item on the stack
+                dest = top.dest;
 
-            // Pop item
-            top.dest = top.dest.offset(1);
-            top.arg -= 1;
-            if top.arg == 0 {
-                self.stack.pop();
-            }
-            // Read a value and set v to this value
-            code = self.read8u();
-            if code >= PREFIX_SMALL_INT {
-                if code >= PREFIX_SMALL_BLOCK {
-                    // Small block
-                    tag = code & 0xf;
-                    size = (code >> 4 & 0x7) as usize;
-                    current_block = READ_BLOCK_LABEL;
-                } else {
-                    // Small integer
-                    v = Value::int((code & 0x3F) as isize);
-                    current_block = NOTHING_TO_DO_LABEL;
+                // Pop item
+                top.dest = top.dest.offset(1);
+                top.arg -= 1;
+                if top.arg == 0 {
+                    self.stack.pop();
                 }
-            } else {
-                if code >= PREFIX_SMALL_STRING {
-                    // Small string
-                    len = (code & 0x1f) as usize;
-                    current_block = READ_STRING_LABEL;
-                } else {
-                    match code {
-                        CODE_INT8 => {
-                            v = Value::from_bits(((self.read8s() as usize) << 1) + 1);
-                            current_block = NOTHING_TO_DO_LABEL;
-                        }
-                        CODE_INT16 => {
-                            v = Value::from_bits(((self.read16s() as usize) << 1) + 1);
-                            current_block = NOTHING_TO_DO_LABEL;
-                        }
-                        CODE_INT32 => {
-                            v = Value::from_bits(((self.read32s() as usize) << 1) + 1);
-                            current_block = NOTHING_TO_DO_LABEL;
-                        }
-                        CODE_INT64 => {
-                            v = Value::from_bits(((self.read64u() as usize) << 1) + 1);
-                            current_block = NOTHING_TO_DO_LABEL;
-                        }
-                        CODE_SHARED8 => {
-                            ofs = self.read8u() as usize;
-                            current_block = READ_SHARED_LABEL;
-                        }
-                        CODE_SHARED16 => {
-                            ofs = self.read16u() as usize;
-                            current_block = READ_SHARED_LABEL;
-                        }
-                        CODE_SHARED32 => {
-                            ofs = self.read32u() as usize;
-                            current_block = READ_SHARED_LABEL;
-                        }
-                        CODE_SHARED64 => {
-                            ofs = self.read64u() as usize;
-                            current_block = READ_SHARED_LABEL;
-                        }
-                        CODE_BLOCK32 => {
-                            header = self.read32u() as usize;
-                            tag = (header & 0xff) as u8;
-                            size = header >> 10;
-                            current_block = READ_BLOCK_LABEL;
-                        }
-                        CODE_BLOCK64 => {
-                            header = self.read64u() as usize;
-                            tag = (header & 0xff) as u8;
-                            size = header >> 10;
-                            current_block = READ_BLOCK_LABEL;
-                        }
-                        CODE_STRING8 => {
-                            len = self.read8u() as usize;
-                            current_block = READ_STRING_LABEL;
-                        }
-                        CODE_STRING32 => {
-                            len = self.read32u() as usize;
-                            current_block = READ_STRING_LABEL;
-                        }
-                        CODE_STRING64 => {
-                            len = self.read64u() as usize;
-                            current_block = READ_STRING_LABEL;
-                        }
-                        CODE_DOUBLE_LITTLE | CODE_DOUBLE_BIG => {
-                            let mut builder = self.alloc.block_with_size_and_tag(
-                                ocamlrep::DOUBLE_WOSIZE,
-                                ocamlrep::DOUBLE_TAG,
-                            );
-                            self.readfloat(
-                                &mut *(self.alloc.block_ptr_mut(&mut builder) as *mut f64),
-                                code,
-                            );
-                            v = Value::from_bits(builder.build().to_bits());
-                            self.obj_counter += 1;
-                            self.intern_obj_table.push(v);
-                            current_block = NOTHING_TO_DO_LABEL;
-                        }
-                        CODE_DOUBLE_ARRAY8_LITTLE | CODE_DOUBLE_ARRAY8_BIG => {
-                            len = self.read8u() as usize;
-                            current_block = READ_DOUBLE_ARRAY_LABEL;
-                        }
-                        CODE_DOUBLE_ARRAY32_LITTLE | CODE_DOUBLE_ARRAY32_BIG => {
-                            len = self.read32u() as usize;
-                            current_block = READ_DOUBLE_ARRAY_LABEL;
-                        }
-                        CODE_DOUBLE_ARRAY64_LITTLE | CODE_DOUBLE_ARRAY64_BIG => {
-                            len = self.read64u() as usize;
-                            current_block = READ_DOUBLE_ARRAY_LABEL;
-                        }
-                        CODE_CODEPOINTER | CODE_INFIXPOINTER | CODE_CUSTOM | CODE_CUSTOM_LEN
-                        | CODE_CUSTOM_FIXED => {
-                            unimplemented!()
-                        }
-                        _ => {
-                            panic!("input_value: ill-formed message");
-                        }
+                // Read a value and set v to this value
+                code = self.read8u();
+                if code >= PREFIX_SMALL_INT {
+                    if code >= PREFIX_SMALL_BLOCK {
+                        // Small block
+                        tag = code & 0xf;
+                        size = (code >> 4 & 0x7) as usize;
+                        current_block = READ_BLOCK_LABEL;
+                    } else {
+                        // Small integer
+                        v = Value::int((code & 0x3F) as isize);
+                        current_block = NOTHING_TO_DO_LABEL;
                     }
-                    match current_block {
-                        NOTHING_TO_DO_LABEL | READ_BLOCK_LABEL | READ_STRING_LABEL => {}
-                        _ => {
-                            match current_block {
+                } else {
+                    if code >= PREFIX_SMALL_STRING {
+                        // Small string
+                        len = (code & 0x1f) as usize;
+                        current_block = READ_STRING_LABEL;
+                    } else {
+                        match code {
+                            CODE_INT8 => {
+                                v = Value::from_bits(((self.read8s() as usize) << 1) + 1);
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
+                            CODE_INT16 => {
+                                v = Value::from_bits(((self.read16s() as usize) << 1) + 1);
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
+                            CODE_INT32 => {
+                                v = Value::from_bits(((self.read32s() as usize) << 1) + 1);
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
+                            CODE_INT64 => {
+                                v = Value::from_bits(((self.read64u() as usize) << 1) + 1);
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
+                            CODE_SHARED8 => {
+                                ofs = self.read8u() as usize;
+                                current_block = READ_SHARED_LABEL;
+                            }
+                            CODE_SHARED16 => {
+                                ofs = self.read16u() as usize;
+                                current_block = READ_SHARED_LABEL;
+                            }
+                            CODE_SHARED32 => {
+                                ofs = self.read32u() as usize;
+                                current_block = READ_SHARED_LABEL;
+                            }
+                            CODE_SHARED64 => {
+                                ofs = self.read64u() as usize;
+                                current_block = READ_SHARED_LABEL;
+                            }
+                            CODE_BLOCK32 => {
+                                header = self.read32u() as usize;
+                                tag = (header & 0xff) as u8;
+                                size = header >> 10;
+                                current_block = READ_BLOCK_LABEL;
+                            }
+                            CODE_BLOCK64 => {
+                                header = self.read64u() as usize;
+                                tag = (header & 0xff) as u8;
+                                size = header >> 10;
+                                current_block = READ_BLOCK_LABEL;
+                            }
+                            CODE_STRING8 => {
+                                len = self.read8u() as usize;
+                                current_block = READ_STRING_LABEL;
+                            }
+                            CODE_STRING32 => {
+                                len = self.read32u() as usize;
+                                current_block = READ_STRING_LABEL;
+                            }
+                            CODE_STRING64 => {
+                                len = self.read64u() as usize;
+                                current_block = READ_STRING_LABEL;
+                            }
+                            CODE_DOUBLE_LITTLE | CODE_DOUBLE_BIG => {
+                                let mut builder = self.alloc.block_with_size_and_tag(
+                                    ocamlrep::DOUBLE_WOSIZE,
+                                    ocamlrep::DOUBLE_TAG,
+                                );
+                                self.readfloat(
+                                    &mut *(self.alloc.block_ptr_mut(&mut builder) as *mut f64),
+                                    code,
+                                );
+                                v = Value::from_bits(builder.build().to_bits());
+                                self.obj_counter += 1;
+                                self.intern_obj_table.push(v);
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
+                            CODE_DOUBLE_ARRAY8_LITTLE | CODE_DOUBLE_ARRAY8_BIG => {
+                                len = self.read8u() as usize;
+                                current_block = READ_DOUBLE_ARRAY_LABEL;
+                            }
+                            CODE_DOUBLE_ARRAY32_LITTLE | CODE_DOUBLE_ARRAY32_BIG => {
+                                len = self.read32u() as usize;
+                                current_block = READ_DOUBLE_ARRAY_LABEL;
+                            }
+                            CODE_DOUBLE_ARRAY64_LITTLE | CODE_DOUBLE_ARRAY64_BIG => {
+                                len = self.read64u() as usize;
+                                current_block = READ_DOUBLE_ARRAY_LABEL;
+                            }
+                            CODE_CODEPOINTER | CODE_INFIXPOINTER | CODE_CUSTOM
+                            | CODE_CUSTOM_LEN | CODE_CUSTOM_FIXED => {
+                                unimplemented!()
+                            }
+                            _ => {
+                                panic!("input_value: ill-formed message");
+                            }
+                        }
+                        match current_block {
+                            NOTHING_TO_DO_LABEL | READ_BLOCK_LABEL | READ_STRING_LABEL => {}
+                            _ => {
+                                match current_block {
                                 READ_SHARED_LABEL => {
                                     v = self.intern_obj_table[self.obj_counter - ofs];
                                 }
@@ -305,11 +306,11 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
                                     self.intern_obj_table.push(v);
                                 }
                             }
-                            current_block = NOTHING_TO_DO_LABEL;
+                                current_block = NOTHING_TO_DO_LABEL;
+                            }
                         }
                     }
-                }
-                match current_block {
+                    match current_block {
                     NOTHING_TO_DO_LABEL| READ_BLOCK_LABEL => {}
                     _ /* READ_STRING_LABEL */ => {
                         size = (len + std::mem::size_of::<Value<'_>>()) / std::mem::size_of::<Value<'_>>();
@@ -320,69 +321,74 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
                         current_block = NOTHING_TO_DO_LABEL;
                     }
                 }
-            }
-            if current_block == READ_BLOCK_LABEL {
-                if size == 0 {
-                    panic!("input_value: atoms are not supported");
-                } else {
-                    let mut builder = self.alloc.block_with_size_and_tag(size, tag);
-                    if tag == ocamlrep::OBJECT_TAG {
-                        panic!("input_value: objects not supported");
-                    } else {
-                        // If it's not an object then read the
-                        // contents of the block
-                        self.stack.push(InternItem {
-                            dest: self.alloc.block_ptr_mut(&mut builder),
-                            arg: size,
-                        });
-                    }
-                    v = Value::from_bits(builder.build().to_bits());
-                    self.obj_counter += 1;
-                    self.intern_obj_table.push(v);
                 }
+                if current_block == READ_BLOCK_LABEL {
+                    if size == 0 {
+                        panic!("input_value: atoms are not supported");
+                    } else {
+                        let mut builder = self.alloc.block_with_size_and_tag(size, tag);
+                        if tag == ocamlrep::OBJECT_TAG {
+                            panic!("input_value: objects not supported");
+                        } else {
+                            // If it's not an object then read the
+                            // contents of the block
+                            self.stack.push(InternItem {
+                                dest: self.alloc.block_ptr_mut(&mut builder),
+                                arg: size,
+                            });
+                        }
+                        v = Value::from_bits(builder.build().to_bits());
+                        self.obj_counter += 1;
+                        self.intern_obj_table.push(v);
+                    }
+                }
+                *dest = v
             }
-            *dest = v
         }
     }
 
     unsafe fn parse_header(&mut self, h: *mut MarshalHeader) {
-        (*h).magic = self.read32u();
-        match (*h).magic {
-            MAGIC_NUMBER_SMALL => {
-                (*h).header_len = 20;
-                (*h).data_len = self.read32u() as usize;
-                (*h).num_objects = self.read32u() as usize;
-                self.read32u();
-                (*h).whsize = self.read32u() as usize
-            }
-            MAGIC_NUMBER_BIG => {
-                (*h).header_len = 32;
-                self.read32u();
-                (*h).data_len = self.read64u() as usize;
-                (*h).num_objects = self.read64u() as usize;
-                (*h).whsize = self.read64u() as usize;
-            }
-            _ => panic!("input_value: bad object"),
-        };
+        unsafe {
+            (*h).magic = self.read32u();
+            match (*h).magic {
+                MAGIC_NUMBER_SMALL => {
+                    (*h).header_len = 20;
+                    (*h).data_len = self.read32u() as usize;
+                    (*h).num_objects = self.read32u() as usize;
+                    self.read32u();
+                    (*h).whsize = self.read32u() as usize
+                }
+                MAGIC_NUMBER_BIG => {
+                    (*h).header_len = 32;
+                    self.read32u();
+                    (*h).data_len = self.read64u() as usize;
+                    (*h).num_objects = self.read64u() as usize;
+                    (*h).whsize = self.read64u() as usize;
+                }
+                _ => panic!("input_value: bad object"),
+            };
+        }
     }
 
     unsafe fn input_val_from_string(&mut self, str: &'s [u8]) -> usize {
-        let mut obj = Value::int(0).to_bits();
-        let mut h = MarshalHeader {
-            magic: 0,
-            header_len: 0,
-            data_len: 0,
-            num_objects: 0,
-            whsize: 0,
-        };
-        self.parse_header(&mut h);
-        if h.header_len as usize + h.data_len > str.len() {
-            panic!("input_value: bad length");
-        }
-        self.intern_src = &str[(h.header_len as usize)..];
-        self.intern_rec(&mut obj as *mut usize as *mut Value<'a>);
+        unsafe {
+            let mut obj = Value::int(0).to_bits();
+            let mut h = MarshalHeader {
+                magic: 0,
+                header_len: 0,
+                data_len: 0,
+                num_objects: 0,
+                whsize: 0,
+            };
+            self.parse_header(&mut h);
+            if h.header_len as usize + h.data_len > str.len() {
+                panic!("input_value: bad length");
+            }
+            self.intern_src = &str[(h.header_len as usize)..];
+            self.intern_rec(&mut obj as *mut usize as *mut Value<'a>);
 
-        obj
+            obj
+        }
     }
 }
 
@@ -394,6 +400,8 @@ pub unsafe fn input_value<'a, A: ocamlrep::Allocator>(
     str: &[u8],
     alloc: &'a A,
 ) -> ocamlrep::Value<'a> {
-    let mut state = State::new(alloc, str);
-    ocamlrep::Value::from_bits(state.input_val_from_string(str))
+    unsafe {
+        let mut state = State::new(alloc, str);
+        ocamlrep::Value::from_bits(state.input_val_from_string(str))
+    }
 }

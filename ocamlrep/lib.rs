@@ -512,7 +512,7 @@ pub trait FromOcamlRep: Sized {
     /// naked pointers. None of these values may be modified while `from_ocaml`
     /// is running.
     unsafe fn from_ocaml(value: usize) -> Result<Self, FromError> {
-        Self::from_ocamlrep(Value::from_bits(value))
+        unsafe { Self::from_ocamlrep(Value::from_bits(value)) }
     }
 }
 

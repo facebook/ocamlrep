@@ -18,7 +18,7 @@ use serde::Serialize;
 #[derive(Serialize, Deserialize)]
 pub struct Int64(pub i64);
 
-extern "C" {
+unsafe extern "C" {
     static mut caml_int64_ops: CustomOperations;
 }
 

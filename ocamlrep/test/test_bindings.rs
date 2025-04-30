@@ -22,15 +22,17 @@ fn val<T: FromOcamlRep + ToOcamlRep>(value: T) -> usize {
 
 /// # Safety
 /// `value` must be a valid pointer to an OCaml value.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn convert_to_ocamlrep(value: usize) -> usize {
-    let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
-    let value = ocamlrep::Value::from_bits(value);
-    let value = value.clone_with_allocator(arena);
-    value.to_bits()
+    unsafe {
+        let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
+        let value = ocamlrep::Value::from_bits(value);
+        let value = value.clone_with_allocator(arena);
+        value.to_bits()
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn realloc_in_ocaml_heap(value: usize) -> usize {
     let value = unsafe { ocamlrep::Value::from_bits(value) };
     let pool = unsafe { ocamlrep_ocamlpool::Pool::new() };
@@ -39,75 +41,75 @@ pub extern "C" fn realloc_in_ocaml_heap(value: usize) -> usize {
 
 // Primitive Tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_a(_unit: usize) -> usize {
     val('a')
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_five(_unit: usize) -> usize {
     val(5)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_true(_unit: usize) -> usize {
     val(true)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_false(_unit: usize) -> usize {
     val(false)
 }
 
 // Option Tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_none(_unit: usize) -> usize {
     val(None::<isize>)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_some_five(_unit: usize) -> usize {
     val(Some(5))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_some_none(_unit: usize) -> usize {
     val(Some(None::<isize>))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_some_some_five(_unit: usize) -> usize {
     val(Some(Some(5)))
 }
 
 // Ref tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_int_ref(_unit: usize) -> usize {
     val(RefCell::new(5))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_int_option_ref(_unit: usize) -> usize {
     val(RefCell::new(Some(5)))
 }
 
 // Unsized type tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_str(_unit: usize) -> usize {
     let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
     arena.add("static str").to_bits()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_byte_slice(_unit: usize) -> usize {
     let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
     arena.add(&b"byte\x00\xFFslice"[..]).to_bits()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_int_opt_slice(_unit: usize) -> usize {
     let arena = Box::leak(Box::new(ocamlrep::Arena::new()));
     let vec = [None, Some(2), Some(3)];
@@ -117,22 +119,22 @@ pub extern "C" fn get_int_opt_slice(_unit: usize) -> usize {
 
 // List Tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_empty_list(_unit: usize) -> usize {
     val(Vec::<isize>::new())
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_five_list(_unit: usize) -> usize {
     val(vec![5])
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_one_two_three_list(_unit: usize) -> usize {
     val(vec![1, 2, 3])
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_float_list(_unit: usize) -> usize {
     val(vec![1.0, 2.0, 3.0])
 }
@@ -151,12 +153,12 @@ struct Bar {
     d: Option<Vec<Option<isize>>>,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_foo(_unit: usize) -> usize {
     val(Foo { a: 25, b: true })
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_bar(_unit: usize) -> usize {
     val(Bar {
         c: Foo { a: 42, b: false },
@@ -166,42 +168,42 @@ pub extern "C" fn get_bar(_unit: usize) -> usize {
 
 // String Tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_empty_string(_unit: usize) -> usize {
     val(String::from(""))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_a_string(_unit: usize) -> usize {
     val(String::from("a"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_ab_string(_unit: usize) -> usize {
     val(String::from("ab"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_abcde_string(_unit: usize) -> usize {
     val(String::from("abcde"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_abcdefg_string(_unit: usize) -> usize {
     val(String::from("abcdefg"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_abcdefgh_string(_unit: usize) -> usize {
     val(String::from("abcdefgh"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_zero_float(_unit: usize) -> usize {
     val(0.0_f64)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_one_two_float(_unit: usize) -> usize {
     val(1.2_f64)
 }
@@ -216,42 +218,42 @@ enum Fruit {
     Kiwi,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_apple(_unit: usize) -> usize {
     val(Fruit::Apple)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_orange(_unit: usize) -> usize {
     val(Fruit::Orange(39))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_pear(_unit: usize) -> usize {
     val(Fruit::Pear { num: 76 })
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_kiwi(_unit: usize) -> usize {
     val(Fruit::Kiwi)
 }
 
 // Map tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_empty_smap(_unit: usize) -> usize {
     let map: BTreeMap<String, isize> = BTreeMap::new();
     val(map)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_int_smap_singleton(_unit: usize) -> usize {
     let mut map = BTreeMap::new();
     map.insert(String::from("a"), 1);
     val(map)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_int_smap(_unit: usize) -> usize {
     let mut map = BTreeMap::new();
     map.insert(String::from("a"), 1);
@@ -262,20 +264,20 @@ pub extern "C" fn get_int_smap(_unit: usize) -> usize {
 
 // Set tests
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_empty_sset(_unit: usize) -> usize {
     let set: BTreeSet<String> = BTreeSet::new();
     val(set)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_sset_singleton(_unit: usize) -> usize {
     let mut set = BTreeSet::new();
     set.insert(String::from("a"));
     val(set)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_sset(_unit: usize) -> usize {
     let mut set = BTreeSet::new();
     set.insert(String::from("a"));
@@ -284,7 +286,7 @@ pub extern "C" fn get_sset(_unit: usize) -> usize {
     val(set)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn roundtrip_int64(value: usize) -> usize {
     let i = unsafe { ocamlrep_caml_builtins::Int64::from_ocaml(value).unwrap() };
     val(i)

@@ -105,7 +105,7 @@ impl Rewriter {
         }
         let ty = path.ty.as_str().to_case(Case::Snake);
         let ty_matches_last_module_in_path =
-            (path.modules.last()).map_or(false, |module| ty == module.as_str());
+            (path.modules.last()).is_some_and(|module| ty == module.as_str());
         if ty_matches_last_module_in_path || ty == self.module_name.as_str() {
             path.ty = ir::TypeName(String::from("t"));
         }

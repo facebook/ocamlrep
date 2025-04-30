@@ -18,7 +18,7 @@ use ocamlrep::Value;
 
 use crate::intext::*;
 
-extern "C" {
+unsafe extern "C" {
     fn ocaml_version() -> usize;
 }
 
