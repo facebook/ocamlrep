@@ -534,7 +534,7 @@ mod tests {
                             arena: &'__ocamlrep_derive_allocator Alloc,
                         ) -> ::ocamlrep::Value<'__ocamlrep_derive_allocator> {
                             use ::ocamlrep::Allocator;
-                            match self {
+                            match *self {
                                 A {
                                     a: ref __binding_0,
                                     b: ref __binding_1,
