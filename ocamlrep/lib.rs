@@ -61,7 +61,7 @@ let use_rust_tuple () =
 We could provide this symbol from the Rust side like this:
 
 ```rust
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_tuple(_unit: usize) -> usize {
     use ocamlrep::{Allocator, Arena};
     let arena = Box::leak(Box::new(Arena::new()));
@@ -95,7 +95,7 @@ let () =
 And call into OCaml from Rust (using the `ocaml` crate) to hand over the value:
 
 ```rust
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn make_and_use_tuple(_unit: usize) -> usize {
     use ocamlrep::{Allocator, Arena};
     let arena = Arena::new();
@@ -125,7 +125,7 @@ runtime")](#example-return-an-ocaml-value-to-the-ocaml-runtime) with one that
 allows the OCaml value to be garbage-collected when no longer used:
 
 ```rust
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_tuple(_unit: usize) -> usize {
     ocamlrep_ocamlpool::to_ocaml(&(Some(42), String::from("a")))
 }
@@ -162,7 +162,7 @@ let () = use_tuple (Some 42, "a")
 We could convert the tuple to a Rust value like this:
 
 ```rust
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn use_tuple(ocaml_tuple: usize) -> usize {
     // Import the OcamlRep trait to use its associated function `from_ocaml`.
     use ocamlrep::OcamlRep;
