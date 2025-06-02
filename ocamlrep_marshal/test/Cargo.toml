@@ -4,7 +4,7 @@
 name = "ocamlrep_marshal_ffi_bindings"
 version = "0.1.0"
 authors = ["Shayne Fletcher <shaynefletcher@meta.com>", "Jake Bailey <jakebailey@meta.com>", "Vincent Siles <vsiles@meta.com>", "Meta"]
-edition = "2021"
+edition = "2024"
 readme = "../../README.md"
 repository = "https://github.com/facebook/ocamlrep"
 license = "MIT"
