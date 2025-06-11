@@ -31,10 +31,14 @@ fn ocamllib_dir() -> std::path::PathBuf {
 }
 
 fn main() {
-    // Tell Cargo that if the given file changes, to rerun this build script.
+    let ocaml_dir = ocamllib_dir();
+
     println!("cargo:rerun-if-changed=ocamlpool.c");
     cc::Build::new()
-        .include(ocamllib_dir().as_path().to_str().unwrap())
+        .include(ocaml_dir.as_path())
         .file("ocamlpool.c")
         .compile("ocamlpool");
+
+    println!("cargo:rustc-link-search=native={}", ocaml_dir.display());
+    println!("cargo:rustc-link-lib=dylib=camlrun");
 }

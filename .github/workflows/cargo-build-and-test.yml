@@ -22,5 +22,8 @@ jobs:
           opam init --compiler=5.3.0 --disable-sandboxing -y
           opam env | sed "s/ export .*//g" | sed "s/'//g" | sed "s/\;//g" >> $GITHUB_ENV
       - run: ./ocaml-setup.sh
+      - name: Set macOS deployment target
+        run: echo "MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion | cut -d. -f1-2)" >> $GITHUB_ENV
+        if: matrix.os == 'macos'
       - run: cargo build
       - run: cargo test
