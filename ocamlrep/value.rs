@@ -197,7 +197,7 @@ impl Debug for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.as_block() {
             None => write!(f, "{}", self.as_int().unwrap()),
-            Some(block) => write!(f, "{:?}", block),
+            Some(block) => write!(f, "{block:?}"),
         }
     }
 }

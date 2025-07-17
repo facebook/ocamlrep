@@ -219,7 +219,7 @@ trivial_from_in_impl!(bool);
 
 impl ToOcamlRep for char {
     fn to_ocamlrep<'a, A: Allocator>(&'a self, _alloc: &'a A) -> Value<'a> {
-        assert!(*self as u32 <= 255, "char out of range: {}", self);
+        assert!(*self as u32 <= 255, "char out of range: {self}");
         Value::int(*self as isize)
     }
 }

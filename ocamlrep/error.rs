@@ -49,46 +49,39 @@ impl fmt::Display for FromError {
         match self {
             BadUtf8(_) => write!(f, "Invalid UTF-8"),
             BlockTagOutOfRange { max, actual } => {
-                write!(f, "Expected tag value <= {}, but got {}", max, actual)
+                write!(f, "Expected tag value <= {max}, but got {actual}")
             }
-            ErrorInField(idx, _) => write!(f, "Failed to convert field {}", idx),
-            ExpectedBlock(x) => write!(f, "Expected block, but got integer value {}", x),
-            ExpectedBlockTag { expected, actual } => write!(
-                f,
-                "Expected block with tag {}, but got {}",
-                expected, actual
-            ),
-            ExpectedBool(x) => write!(f, "Expected bool, but got {}", x),
-            ExpectedChar(x) => write!(f, "Expected char, but got {}", x),
+            ErrorInField(idx, _) => write!(f, "Failed to convert field {idx}"),
+            ExpectedBlock(x) => write!(f, "Expected block, but got integer value {x}"),
+            ExpectedBlockTag { expected, actual } => {
+                write!(f, "Expected block with tag {expected}, but got {actual}",)
+            }
+            ExpectedBool(x) => write!(f, "Expected bool, but got {x}"),
+            ExpectedChar(x) => write!(f, "Expected char, but got {x}"),
             ExpectedInt(x) => {
-                write!(f, "Expected integer value, but got block pointer {:p}", x)
+                write!(f, "Expected integer value, but got block pointer {x:p}")
             }
             Expected63BitInt(x) => write!(
                 f,
-                "Expected integer value between -2^(n-2) and 2^(n-2)-1, where n is the number of bits in isize, but got {}",
-                x
+                "Expected integer value between -2^(n-2) and 2^(n-2)-1, where n is the number of bits in isize, but got {x}",
             ),
-            ExpectedUnit(x) => write!(f, "Expected (), but got {}", x),
+            ExpectedUnit(x) => write!(f, "Expected (), but got {x}"),
             ExpectedZeroTag(x) => write!(
                 f,
-                "Expected block with tag 0 (tuple, record, cons cell, etc), but got tag value {}",
-                x
+                "Expected block with tag 0 (tuple, record, cons cell, etc), but got tag value {x}",
             ),
             IntOutOfRange(_) => write!(f, "Integer value out of range"),
             NullaryVariantTagOutOfRange { max, actual } => write!(
                 f,
-                "Expected nullary variant tag, where 0 <= tag <= {}, but got {}",
-                max, actual
+                "Expected nullary variant tag, where 0 <= tag <= {max}, but got {actual}",
             ),
             WrongBlockSize { expected, actual } => write!(
                 f,
-                "Expected block of size {}, but got size {}",
-                expected, actual
+                "Expected block of size {expected}, but got size {actual}",
             ),
             UnexpectedCustomOps { expected, actual } => write!(
                 f,
-                "Expected custom operations struct address 0x{:x}, but got address 0x{:x}",
-                expected, actual
+                "Expected custom operations struct address 0x{expected:x}, but got address 0x{actual:x}",
             ),
         }
     }
