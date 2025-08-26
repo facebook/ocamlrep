@@ -399,11 +399,11 @@ macro_rules! ocaml_registered_function_fn {
     // caml_apply3 etc. which for some reason crashes!
     //
     // TODO: FIgure out how to make caml_apply2 and friends not crash, and remove the below rule.
-    ($ocaml_name:expr_2021, fn $name:ident($param1:ident: $ty1:ty, $($params:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
+    ($ocaml_name:expr, fn $name:ident($param1:ident: $ty1:ty, $($params:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
         compile_error!("We don't support functions with more than one parameter.");
     };
 
-    ($ocaml_name:expr_2021, fn $name:ident($($param:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
+    ($ocaml_name:expr, fn $name:ident($($param:ident: $ty:ty),+  $(,)?) -> $ret:ty) => {
         #[unsafe(no_mangle)]
         pub unsafe fn $name ($($param: $ty,)*) -> $ret {
             use std::sync::OnceLock;
@@ -427,7 +427,7 @@ macro_rules! ocaml_registered_function_fn {
         }
     };
 
-    ($ocaml_name:expr_2021, fn $name:ident() -> $ret:ty) => {
+    ($ocaml_name:expr, fn $name:ident() -> $ret:ty) => {
         unsafe fn $name() -> $ret {
             $crate::ocaml_registered_function_fn!(
                 $ocaml_name,
@@ -437,7 +437,7 @@ macro_rules! ocaml_registered_function_fn {
         }
     };
 
-    ($ocaml_name:expr_2021, fn $name:ident($($param:ident: $ty:ty),*  $(,)?)) => {
+    ($ocaml_name:expr, fn $name:ident($($param:ident: $ty:ty),*  $(,)?)) => {
         $crate::ocaml_registered_function_fn!(
             $ocaml_name,
             fn $name($($param: $ty),*) -> ()
