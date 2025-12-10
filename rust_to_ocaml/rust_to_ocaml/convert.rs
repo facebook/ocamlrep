@@ -202,7 +202,7 @@ impl ItemConverter {
                                     } else {
                                         anyhow::bail!(
                                             "Variant {} must have a single argument which is a tuple",
-                                            variant.ident.to_string()
+                                            variant.ident
                                         )
                                     }
                                 }
