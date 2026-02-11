@@ -15,7 +15,7 @@ doctest = false
 
 [dependencies]
 bstr = { version = "1.10.0", features = ["serde", "std", "unicode"] }
-bumpalo = { version = "3.14.0", features = ["collections"] }
+bumpalo = { version = "3.19.1", features = ["collections"] }
 indexmap = { version = "2.13.0", features = ["arbitrary", "rayon", "serde"] }
 ocamlrep_derive = { path = "../ocamlrep_derive" }
 rustc-hash = "2.1.1"
