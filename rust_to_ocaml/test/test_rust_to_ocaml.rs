@@ -29,7 +29,7 @@ const IN_EXT: &str = "rs";
 const EXP_EXT: &str = "exp";
 
 fn main() -> anyhow::Result<()> {
-    let opts = <Opts as clap::Parser>::from_args();
+    let opts = <Opts as clap::Parser>::parse();
     if opts.update_snapshots {
         update_snapshots(&opts)?;
     } else {

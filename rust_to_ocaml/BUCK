@@ -18,7 +18,7 @@ rust_binary(
     deps = [
         "fbcode//common/ocaml/interop/signed_source:signed_source",
         "fbsource//third-party/rust:anyhow",
-        "fbsource//third-party/rust:clap-3",
+        "fbsource//third-party/rust:clap",
         "fbsource//third-party/rust:convert_case",
         "fbsource//third-party/rust:derive_more",
         "fbsource//third-party/rust:indexmap",

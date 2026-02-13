@@ -43,7 +43,7 @@ rust_binary(
     rustc_flags = RUST_FLAGS_2018,
     deps = [
         "fbsource//third-party/rust:anyhow",
-        "fbsource//third-party/rust:clap-3",
+        "fbsource//third-party/rust:clap",
         "fbsource//third-party/rust:similar",
         "fbsource//third-party/rust:walkdir",
     ],
