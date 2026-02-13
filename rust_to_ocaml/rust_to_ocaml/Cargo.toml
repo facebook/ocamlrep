@@ -18,7 +18,7 @@ test = false
 anyhow = "1.0.98"
 attr_parser = { path = "../attr_parser" }
 clap = { version = "4.5.42", features = ["derive", "env", "string", "unicode", "wrap_help"] }
-convert_case = "0.10.0"
+convert_case = "0.11"
 derive_more = { version = "1.0.0", features = ["full"] }
 indexmap = { version = "2.13.0", features = ["arbitrary", "rayon", "serde"] }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
