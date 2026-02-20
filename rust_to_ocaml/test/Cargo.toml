@@ -14,7 +14,7 @@ name = "test_rust_to_ocaml"
 path = "test_rust_to_ocaml.rs"
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.101"
 clap = { version = "4.5.42", features = ["derive", "env", "string", "unicode", "wrap_help"] }
 similar = { version = "2.2.0", features = ["bytes", "inline"] }
 walkdir = "2.3"
