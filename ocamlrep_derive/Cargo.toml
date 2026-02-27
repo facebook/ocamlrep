@@ -19,7 +19,7 @@ proc-macro = true
 proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
 quote = "1.0.44"
 syn = { version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-synstructure = "0.12"
+synstructure = "0.12.6"
 
 [dev-dependencies]
 anyhow = "1.0.101"
