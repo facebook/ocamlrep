@@ -10,3 +10,8 @@ cargo_env = [
     "CARGO_PKG_NAME", # Needed by _buck1_handle_manifest_dir
     "CARGO_MANIFEST_DIR",
 ]
+
+# build.rs calls `load_file("assets/oid_db.txt")` at runtime; precise_srcs
+# detects macros like `include!` but not string-based file reads, so declare
+# the asset explicitly.
+extra_srcs = ["assets/oid_db.txt"]
