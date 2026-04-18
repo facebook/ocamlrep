@@ -59,6 +59,7 @@ def _download_protoc_distribution_impl(ctx: AnalysisContext) -> Promise:
     # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
     return ctx.actions.anon_target(native.http_archive, {
         "exec_deps": ctx.attrs._http_archive_exec_deps,
+        "has_content_based_path": False,
         "sha256": ctx.attrs.sha256,
         "sub_targets": [
             protoc_filename,
