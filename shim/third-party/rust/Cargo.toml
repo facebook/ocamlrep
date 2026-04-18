@@ -36,6 +36,7 @@ async-compression = { version = "0.4.41", features = ["gzip", "tokio", "zstd"] }
 async-condvar-fair = { version = "0.2.2", features = ["parking_lot_0_11", "tokio"] }
 async-recursion = "1.0"
 async-scoped = { version = "0.8", features = ["use-tokio"] }
+async-stream = "0.3"
 async-trait = "0.1.24"
 atomic = "0.5.1"
 aws-lc-sys = "0.29"
@@ -48,6 +49,7 @@ bstr = { version = "1.4.0", features = ["serde", "std", "unicode"] }
 buck-resources = "1"
 bumpalo = { version = "3.14.0", features = ["allocator_api", "collections"] }
 byteorder = "1.4.3"
+bytemuck = { version = "1.24", features = ["const_zeroed", "derive", "min_const_generics", "must_cast", "nightly_portable_simd", "nightly_stdsimd"] }
 bytes = "1.0"
 bytesize = "2.0"
 chrono = "0.4.28"
@@ -85,6 +87,7 @@ fancy-regex = "0.10.0"
 fbinit = "0.2"
 flate2 = "1.1.9"
 fnv = "1.0.7"
+form_urlencoded = "1"
 fs4 = { version = "0.9.1", features = ["sync"] }
 futures = { version = "0.3.28", features = ["async-await", "compat"] }
 futures-intrusive = "0.4"
@@ -102,10 +105,10 @@ httparse = "1.7.1"
 httptest = "0.15"
 httptest-0-16 = { package = "httptest", version = "0.16" }
 humantime = "2.0.1"
+hyper = { version = "1.8.1", features = ["client", "http1", "http2"] }
 hyper-0-14 = { package = "hyper", version = "0.14.26", features = ["client", "http1", "http2", "stream"] }
-hyper-1-5-1 = { package = "hyper", version = "1.5.1", features = ["client", "http1", "http2"] }
 hyper-http-proxy = "1.0"
-hyperlocal-0-9 = { package = "hyperlocal", version = "0.9", features = ["client"] }
+hyperlocal = { version = "0.9", features = ["client"] }
 hyper-proxy = { git = "https://github.com/get9/hyper-proxy", rev = "80ac13e5bc89fa8e41c6155aa1bcc733242a158d", features = ["rustls"], default_features = false } # branch = tokio-rustls-0.23 Many PRs to bump versions (#28, #30, #31) are several years old, possibly abandoned crate. This fork contains changes from #28 + changes to upgrade rustls to 0.21.
 hyper-proxy2 = { version = "0.1", features = ["rustls"], default-features = false }
 hyper-rustls = { version = "0.24.0", features = ["http2"] }
@@ -114,6 +117,7 @@ hyper-rustls-0-27 = { package = "hyper-rustls", version = "0.27.0", features = [
 hyper-timeout = "0.4"
 hyper-timeout-0-5 = { package = "hyper-timeout", version = "0.5" }
 hyper-util = "0.1.10"
+image = { version = "0.25.9", features = ["png"], default-features = false }
 indent_write = "2.2.0"
 indenter = "0.3.3"
 index_vec = "0.1.4"
@@ -166,6 +170,7 @@ perf-event = "0.4"
 perf-event-open-sys = "5.0"
 pin-project = "0.4.29"
 plist = "0.5"
+postcard = { version = "1.0.8", features = ["use-crc", "use-std"] }
 pretty_assertions = "1.2.1"
 probminhash = { git = "https://github.com/krallin/probminhash", rev = "3d6b7a5315305c2893a7a04e0de9e23b305992c5", default-features = false } # WAITING_FOR_PR https://github.com/jean-pierreBoth/probminhash/pull/4
 proc-macro2 = { version = "1.0.70", features = ["span-locations"] }
@@ -180,6 +185,7 @@ prost-derive-0-13-4 = { package = "prost-derive", version = "0.13.4" }
 protoc-bin-vendored = "3.0.0"
 psutil = "3.2"
 ptyprocess = "0.4"
+quick-xml = { version = "0.37", features = ["overlapped-lists", "serialize"] }
 quickcheck = "1.0"
 quote = "1.0.3"
 rand = { package = "rand", version = "0.9", features = ["small_rng"] }
@@ -247,6 +253,7 @@ tonic = { version = "0.10.2", features = ["tls", "tls-webpki-roots"] }
 tonic-0-12-3 = { package = "tonic", version = "0.12.3", features = ["tls", "tls-webpki-roots"] }
 tonic-build = { version = "0.10.2", features = ["prost", "cleanup-markdown"] }
 tonic-build-0-12-3 = { package = "tonic-build", version = "0.12.3", features = ["prost", "cleanup-markdown"] }
+tonic-prost-build = "0.14.5"
 tower = "0.4"
 tower-layer = "0.3.1"
 tower-service = "0.3.3"
@@ -265,6 +272,7 @@ watchman_client = "0.8.0"
 which = "4.3.0"
 whoami = "1.5.1"
 winapi = { version = "0.3", features = ["everything", "std"] }
+windows-sys = { version = "0.59.0", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading"] }
 windows_x86_64_msvc = "=0.48.0" # our fixup only works if we are on precisely 0.48.0
 x509-parser = { version = "0.14.0", features = ["verify"] }
 xattr = "0.2.2"
