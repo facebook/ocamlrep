@@ -106,7 +106,7 @@ hyper-0-14 = { package = "hyper", version = "0.14.32", features = ["client", "ht
 hyper-http-proxy = "1.0"
 hyperlocal = { version = "0.9", features = ["client"] }
 hyper-proxy2 = { version = "0.1", features = ["rustls"], default-features = false }
-hyper-rustls = { version = "0.27.7", features = ["http2"] }
+hyper-rustls = { version = "0.27.7", default-features = false, features = ["http1", "http2", "logging", "native-tokio", "ring", "tls12"] }
 hyper-timeout = "0.5.2"
 hyper-util = { version = "0.1.20", features = ["client-legacy", "http1", "http2", "server-auto", "service", "tokio"] }
 image = { version = "0.25.10", features = ["bmp", "dds", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "tga", "tiff", "webp"], default-features = false }
@@ -223,7 +223,7 @@ textwrap = { version = "0.16.0", features = ["terminal_size"] }
 thiserror = "2.0.18"
 threadpool = "1.8.1"
 tokio = { version = "1.52.1", features = ["full", "test-util", "tracing"] }
-tokio-rustls = "0.26.4"
+tokio-rustls = { version = "0.26.4", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1.18", features = ["fs", "io-util", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.7.18", features = ["full"] }
 toml = { version = "0.9.12", features = ["preserve_order"] }
