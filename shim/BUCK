@@ -19,7 +19,23 @@ oncall("open_source")
 
 system_cxx_toolchain(
     name = "cxx",
+    compiler = "gcc",
+    # `compiler_type = "gcc"` is required in addition to the compiler
+    # binary names. The prelude gates many flags on `compiler_type`
+    # rather than the binary name (e.g. `prelude/cxx/compiler.bzl` adds
+    # `-Xclang -fdebug-compilation-dir ... -fcolor-diagnostics` only when
+    # `compiler_type in ["clang", ...]`). Without this, gcc is invoked
+    # with clang-only flags and rejects them.
+    compiler_type = "gcc",
+    cxx_compiler = "g++",
     cxx_flags = ["-std=c++20"],
+    # The sandcastle OSS-bootstrap environment has `gcc`/`g++` on PATH but
+    # not `clang`/`clang++` or `lld`, which are the defaults pulled in by
+    # `prelude//toolchains/cxx/clang:path_clang_tools`. Using `g++` as the
+    # linker also causes `prelude/toolchains/cxx.bzl` to drop its
+    # automatic `-fuse-ld=lld` link flag (see the g++-gated branch there),
+    # so we don't need lld either.
+    linker = "g++",
     visibility = ["PUBLIC"],
 )
 
