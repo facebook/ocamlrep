@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #![allow(unused_crate_dependencies)]
-#![feature(exit_status_error)]
 
 use ocamlrep_ocamlpool::FromOcamlRep;
 use ocamlrep_ocamlpool::ocaml_ffi;
