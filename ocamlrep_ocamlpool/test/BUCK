@@ -23,7 +23,6 @@ rust_library(
     crate_root = "ocamlpool_test.rs",
     rustc_flags = RUST_FLAGS_2018,
     unittests = False,  # Don't try to build/run unittests with buck.
-
     # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
     # [Note: Test blocks for Cargo] in `ocamlpool_test.rs` for details.
     deps = [

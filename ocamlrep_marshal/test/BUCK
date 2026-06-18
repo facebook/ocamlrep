@@ -21,7 +21,6 @@ rust_library(
     crate_root = "ocamlrep_marshal_ffi_bindings.rs",
     rustc_flags = RUST_FLAGS_2018,
     unittests = False,  # Say no to `buck test`.
-
     # `cargo_test_utils`, `anyhow` & `tempdir` are for the cargo unitests. See
     # [Note: Test blocks for Cargo] in
     # `ocamlrep_ocamlpool/test/ocamlpool_test.rs` for details.

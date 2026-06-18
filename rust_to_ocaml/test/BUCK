@@ -21,7 +21,8 @@ custom_unittest(
         "$(location fbcode//common/ocaml/interop/rust_to_ocaml/test/cases:cases)",
         "$(location fbcode//common/ocaml/interop/rust_to_ocaml:rust_to_ocaml)",
         "--",
-    ] + rust_to_ocaml_args,
+    ]
+    + rust_to_ocaml_args,
     emails = ["oncall+hack@xmail.facebook.com"],
     type = "simple",
 )
@@ -33,7 +34,8 @@ buck_command_alias(
         "$(location fbcode//common/ocaml/interop/rust_to_ocaml:rust_to_ocaml)",
         "--update-snapshots",
         "--",
-    ] + rust_to_ocaml_args,
+    ]
+    + rust_to_ocaml_args,
     exe = ":test_rust_to_ocaml",
 )
 
