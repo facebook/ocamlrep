@@ -8,8 +8,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Attribute;
-use syn::Meta;
-use syn::NestedMeta;
+use syn::Result;
 use synstructure::BindingInfo;
 use synstructure::VariantInfo;
 use synstructure::decl_derive;
@@ -45,7 +44,7 @@ fn workaround_non_local_def(impl_block: TokenStream) -> TokenStream {
 fn derive_to_ocamlrep(mut s: synstructure::Structure<'_>) -> TokenStream {
     // remove #[ocamlrep(skip)]
     for variant in s.variants_mut() {
-        variant.filter(|bi| !has_ocamlrep_skip_attr(&bi.ast().attrs));
+        variant.filter(|bi| !matches!(has_ocamlrep_skip_attr(&bi.ast().attrs), Ok(true)));
     }
 
     // By default, if you are deriving an impl of trait Foo for generic type
@@ -189,47 +188,24 @@ fn struct_to_ocamlrep(
     }
 }
 
-/// Fetch all the parameters from ocamlrep attributes:
-///   #[ocamlrep(foo, bar), ocamlrep(baz)]
-/// yields:
-///   [foo, bar, baz]
-fn parse_ocamlrep_attr(attrs: &[Attribute]) -> Option<Vec<NestedMeta>> {
-    let mut res = None;
-    for attr in attrs {
-        let meta = attr.parse_meta().unwrap();
-        match meta {
-            Meta::Path(_) => {
-                // #[foo]
-            }
-            Meta::List(list) => {
-                // #[foo(bar)]
-                if list.path.is_ident("ocamlrep") {
-                    res.get_or_insert_with(Vec::new).extend(list.nested);
-                }
-            }
-            Meta::NameValue(_) => {
-                // #[foo = bar]
-            }
-        }
-    }
-
-    res
-}
-
 /// Returns true if the attributes contain an `#[ocamlrep(skip)]`
-fn has_ocamlrep_skip_attr(attrs: &[Attribute]) -> bool {
-    if let Some(ocamlrep) = parse_ocamlrep_attr(attrs) {
-        for rep in ocamlrep {
-            match rep {
-                NestedMeta::Meta(Meta::Path(path)) if path.is_ident("skip") => {
-                    return true;
+fn has_ocamlrep_skip_attr(attrs: &[Attribute]) -> Result<bool> {
+    let mut skip = false;
+
+    for attr in attrs {
+        if attr.path().is_ident("ocamlrep") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("skip") {
+                    skip = true;
+                    Ok(())
+                } else {
+                    Err(meta.error("unknown ocamlrep attribute"))
                 }
-                _ => {}
-            }
+            })?;
         }
     }
 
-    false
+    Ok(skip)
 }
 
 fn struct_from_ocamlrep(
@@ -257,7 +233,7 @@ fn struct_from_ocamlrep(
         syn::Fields::Named(_) | syn::Fields::Unnamed(_) => {
             let mut binding = 0;
             let constructor = variant.construct(|field, _| {
-                if has_ocamlrep_skip_attr(&field.attrs) {
+                if let Ok(true) = has_ocamlrep_skip_attr(&field.attrs) {
                     quote!(::std::default::Default::default())
                 } else {
                     let idx = binding;
@@ -526,8 +502,7 @@ mod tests {
             Ok(derive_to_ocamlrep(Structure::new(&syn::parse2(input)?))),
             quote! {
                 #[allow(non_local_definitions)]
-                #[allow(non_upper_case_globals)]
-                const _DERIVE_ocamlrep_ToOcamlRep_FOR_A: () = {
+                const _: () = {
                     impl ::ocamlrep::ToOcamlRep for A {
                         fn to_ocamlrep<'__ocamlrep_derive_allocator, Alloc: ::ocamlrep::Allocator>(
                             &'__ocamlrep_derive_allocator self,
@@ -571,8 +546,7 @@ mod tests {
             Ok(derive_from_ocamlrep(Structure::new(&syn::parse2(input)?))),
             quote! {
                 #[allow(non_local_definitions)]
-                #[allow(non_upper_case_globals)]
-                const _DERIVE_ocamlrep_FromOcamlRep_FOR_A: () = {
+                const _: () = {
                     impl ::ocamlrep::FromOcamlRep for A {
                         fn from_ocamlrep(
                             value: ::ocamlrep::Value<'_>
