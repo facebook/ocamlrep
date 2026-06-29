@@ -15,4 +15,4 @@ test = false
 doctest = false
 
 [dependencies]
-syn = { version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+syn = { version = "2.0.118", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }

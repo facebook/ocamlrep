@@ -23,7 +23,7 @@ rust_binary(
         "fbsource//third-party/rust:derive_more",
         "fbsource//third-party/rust:indexmap",
         "fbsource//third-party/rust:serde",
-        "fbsource//third-party/rust:syn1",
+        "fbsource//third-party/rust:syn",
         "fbsource//third-party/rust:toml",
         ":attr_parser",
     ],
@@ -56,6 +56,6 @@ rust_library(
     doctests = False,
     rustc_flags = RUST_FLAGS_2018,
     deps = [
-        "fbsource//third-party/rust:syn1",
+        "fbsource//third-party/rust:syn",
     ],
 )
