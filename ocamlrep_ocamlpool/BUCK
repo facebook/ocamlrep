@@ -26,12 +26,14 @@ rust_library(
         },
         "cargo_toml_config": {
             "dependencies_override": {
-                "build-dependencies": {
-                    "cc": {"version": "1.0.78"},
-                },
                 "dependencies": {
                     "bumpalo": {"features": ["collections"]},
                 },
+            },
+            "extra_buck_dependencies": {
+                "build-dependencies": [
+                    "fbsource//third-party/rust:cc",
+                ],
             },
             "package": {
                 "build": "build.rs",
