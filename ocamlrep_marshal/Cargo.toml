@@ -21,4 +21,4 @@ bitflags = { version = "2.13.1", features = ["serde", "std"], default-features =
 ocamlrep = { path = "../ocamlrep" }
 
 [build-dependencies]
-cc = "1.0.78"
+cc = "1.2.67"
