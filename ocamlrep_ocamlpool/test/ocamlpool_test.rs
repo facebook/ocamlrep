@@ -27,6 +27,7 @@ const MAGIC_MEMORY_SIZE: usize = 1053183;
 
 ocaml_registered_function! {
     fn f_unit_to_unit();
+    fn f_unit_to_unit_2();
     fn f_one_arg_to_unit(x: i64);
     fn f_sum_tuple(args: (i64, i64)) -> i64;
 }
@@ -45,6 +46,7 @@ ocaml_ffi! {
         for _ in 0..4 {
             unsafe {
                 f_unit_to_unit();
+                f_unit_to_unit_2();
                 f_one_arg_to_unit(3);
                 assert!(f_sum_tuple((3, 4)) == 7);
             }

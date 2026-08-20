@@ -427,13 +427,31 @@ macro_rules! ocaml_registered_function_fn {
         }
     };
 
+    // This is written out in full rather than recursing through the rule above,
+    // because that rule marks its function `#[unsafe(no_mangle)]`. If the
+    // zero-argument case recursed through it, the local helper would be
+    // exported with a fixed name (`inner`), and every zero-argument function in
+    // the crate would export the same symbol.
     ($ocaml_name:expr, fn $name:ident() -> $ret:ty) => {
         unsafe fn $name() -> $ret {
-            $crate::ocaml_registered_function_fn!(
-                $ocaml_name,
-                fn inner(_unit: ()) -> $ret
-            );
-            inner(())
+            use std::sync::OnceLock;
+            static FN: OnceLock<usize> = OnceLock::new();
+            let the_function_to_call = *FN.get_or_init(|| {
+                let the_function_to_call_name = std::ffi::CString::new($ocaml_name).expect("string contained null byte");
+                let the_function_to_call = $crate::caml_named_value(the_function_to_call_name.as_ptr());
+                if the_function_to_call.is_null() {
+                    panic!("Could not find function. Use Callback.register");
+                }
+                *the_function_to_call
+            });
+            let args_to_function: Vec<usize> = vec![$crate::to_ocaml(&())];
+            let args_to_function_ptr: *const usize = args_to_function.as_ptr();
+            let result = $crate::caml_callbackN_exn(the_function_to_call, args_to_function.len().try_into().unwrap(), args_to_function_ptr);
+            if $crate::is_exception_result(result) {
+                panic!("OCaml function threw an unknown exception");
+            }
+            let result = <$ret>::from_ocaml(result).unwrap();
+            result
         }
     };
 
