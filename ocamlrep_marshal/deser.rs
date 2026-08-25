@@ -132,8 +132,8 @@ impl<'s, 'a, A: ocamlrep::Allocator> State<'s, 'a, A> {
         let count = dest.len() * 8; // number of bytes
         let bytes = &self.intern_src[..count];
         self.intern_src = &self.intern_src[count..];
-        for (i, bytes) in bytes.as_chunks::<8>().0.iter().enumerate() {
-            let src = *bytes;
+        for (i, bytes) in bytes.chunks_exact(8).enumerate() {
+            let src: [u8; 8] = bytes.try_into().unwrap();
             dest[i] = match code {
                 CODE_DOUBLE_ARRAY8_BIG | CODE_DOUBLE_ARRAY32_BIG => f64::from_be_bytes(src),
                 CODE_DOUBLE_ARRAY8_LITTLE | CODE_DOUBLE_ARRAY32_LITTLE => f64::from_le_bytes(src),
