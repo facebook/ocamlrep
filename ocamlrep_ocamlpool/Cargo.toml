@@ -21,4 +21,4 @@ bumpalo = { version = "3.20.3", features = ["collections"] }
 ocamlrep = { path = "../ocamlrep" }
 
 [build-dependencies]
-cc = "1.4.3"
+cc = "1.4.4"
