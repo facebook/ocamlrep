@@ -400,7 +400,7 @@ impl<'a, W: Write> State<'a, W> {
         if tag < 16 && sz < 8 {
             self.write(PREFIX_SMALL_BLOCK + tag + ((sz as u8) << 4))
         } else {
-            // Note: ocaml-14.4.0 uses `Caml_white` (`0 << 8`)
+            // Note: ocaml-4 used `Caml_white` (`0 << 8`)
             // ('caml/runtime/gc.h').
             //
             // In ocaml-5, via PR https://github.com/ocaml/ocaml/pull/10831, in
@@ -413,16 +413,11 @@ impl<'a, W: Write> State<'a, W> {
             // Check the prevailing OCaml version is well initialized & one
             // we've tested for.
             let which_ocaml = unsafe { ocaml_version() };
-            if ![41400, 41401, 50000, 50100, 50101, 50200].contains(&which_ocaml) {
+            if ![50000, 50100, 50101, 50200].contains(&which_ocaml) {
                 panic!("unexpected ocaml version: {which_ocaml}!");
             }
 
-            let color = if which_ocaml < 50000 {
-                ocamlrep::Color::White
-            } else {
-                ocamlrep::Color::Black
-            };
-            let hd = Header::with_color(sz, tag, color).to_bits();
+            let hd = Header::with_color(sz, tag, ocamlrep::Color::Black).to_bits();
 
             if sz > 0x3FFFFF && self.flags.contains(ExternFlags::COMPAT_32) {
                 panic!("output_value: array cannot be read back on 32-bit platform");
