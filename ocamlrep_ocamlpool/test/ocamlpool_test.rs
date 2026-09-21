@@ -11,7 +11,7 @@ use ocamlrep_ocamlpool::ocaml_registered_function;
 
 unsafe extern "C" {
     fn ocamlpool_enter();
-    fn ocamlpool_reserve_block(tag: u8, size: usize) -> usize;
+    fn ocamlpool_reserve_block(tag: std::os::raw::c_int, size: usize) -> usize;
     fn ocamlpool_leave();
 }
 

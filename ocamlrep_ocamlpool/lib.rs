@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use std::ffi::CString;
+use std::os::raw::c_int;
 use std::panic::UnwindSafe;
 
 pub use bumpalo::Bump;
@@ -18,7 +19,7 @@ pub use ocamlrep::Value;
 unsafe extern "C" {
     fn ocamlpool_enter();
     fn ocamlpool_leave();
-    fn ocamlpool_reserve_block(tag: u8, size: usize) -> usize;
+    fn ocamlpool_reserve_block(tag: c_int, size: usize) -> usize;
     fn caml_failwith(msg: *const i8);
     fn caml_initialize(addr: *mut usize, value: usize);
     static ocamlpool_generation: usize;
@@ -72,7 +73,7 @@ impl Allocator for Pool {
 
     #[inline(always)]
     fn block_with_size_and_tag(&self, size: usize, tag: u8) -> BlockBuilder<'_> {
-        let ptr = unsafe { ocamlpool_reserve_block(tag, size) as *mut Value<'_> };
+        let ptr = unsafe { ocamlpool_reserve_block(tag as c_int, size) as *mut Value<'_> };
         BlockBuilder::new(unsafe { std::slice::from_raw_parts_mut(ptr, size) })
     }
 
