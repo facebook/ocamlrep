@@ -9,7 +9,7 @@ use std::os::raw::c_int;
 use std::panic::UnwindSafe;
 
 pub use bumpalo::Bump;
-use ocamlrep::Allocator;
+pub use ocamlrep::Allocator;
 use ocamlrep::BlockBuilder;
 pub use ocamlrep::FromOcamlRep;
 pub use ocamlrep::FromOcamlRepIn;

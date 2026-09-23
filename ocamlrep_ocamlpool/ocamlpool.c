@@ -370,6 +370,12 @@ void ocamlpool_leave(void) {
 
   ocamlpool_in_section = 0;
 
+  // Bump the generation so that each pool section observes a distinct value.
+  // `RcOc`'s memoization cache relies on this to scope cached OCaml values to
+  // a single section: without the bump, a later section would reuse values
+  // allocated (and possibly since garbage-collected) in an earlier section.
+  ocamlpool_generation += 1;
+
   // We require no GC until control has returned to OCaml thus we may
   // not call this here!
   // caml_process_pending_actions();
@@ -405,8 +411,9 @@ value ocamlpool_reserve_block(tag_t tag, mlsize_t wosize) {
   return Val_hp(p);
 }
 
-// This definition is provided for backwards compatibility with OCaml 4.x's
-// `ocamlrep_ocamlpool` implementation.
+// Generation counter identifying pool sections, for `RcOc`'s memoization cache
+// (see `ocamlrep_ocamlpool::Pool::generation`). Bumped by `ocamlpool_leave`,
+// like in the OCaml 4.x implementation above.
 uintnat ocamlpool_generation = 0;
 
 #endif /* OCAML_VERSION < 50000 */

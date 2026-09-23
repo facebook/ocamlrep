@@ -8,6 +8,8 @@
 
 external test : unit -> unit = "test"
 external test_call_ocaml_from_rust : unit -> unit = "test_call_ocaml_from_rust"
+external test_generation_increases_across_pool_sections : unit -> unit
+  = "test_generation_increases_across_pool_sections"
 
 let f_unit_to_unit (): unit = ()
 let f_one_arg_to_unit (x: int) = assert (x = 3)
@@ -26,6 +28,8 @@ let () = begin
     Callback.register "f_sum_tuple" f_sum_tuple;
 
     test ();
+
+    test_generation_increases_across_pool_sections ();
 
     test_call_ocaml_from_rust ();
 

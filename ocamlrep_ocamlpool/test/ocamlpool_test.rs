@@ -50,6 +50,27 @@ ocaml_ffi! {
             }
         }
     }
+
+    fn test_generation_increases_across_pool_sections() {
+        use ocamlrep_ocamlpool::Allocator as _;
+        // Each fresh `Pool` section must observe a distinct generation: the
+        // counter is bumped by `ocamlpool_leave` on the C side, and `RcOc`'s
+        // memoization cache relies on observing those bumps (a stale read
+        // would resurrect dead memoized values).
+        let mut prev = None;
+        for _ in 0..8 {
+            // SAFETY: no other thread interacts with the OCaml runtime here.
+            let pool = unsafe { ocamlrep_ocamlpool::Pool::new() };
+            let generation = pool.generation();
+            if let Some(prev) = prev {
+                assert!(
+                    generation > prev,
+                    "ocamlpool generation did not increase across pool sections"
+                );
+            }
+            prev = Some(generation);
+        }
+    }
 }
 
 // [Note: Test blocks for Cargo]
