@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::cell::UnsafeCell;
 use std::ffi::CString;
 use std::os::raw::c_int;
 use std::panic::UnwindSafe;
@@ -22,7 +23,11 @@ unsafe extern "C" {
     fn ocamlpool_reserve_block(tag: c_int, size: usize) -> usize;
     fn caml_failwith(msg: *const i8);
     fn caml_initialize(addr: *mut usize, value: usize);
-    static ocamlpool_generation: usize;
+    // NB: Mutated by `ocamlpool_leave` on the C side, so it must be declared
+    // with `UnsafeCell`: reading it through a plain `static` would let the
+    // compiler assume it never changes and reuse stale values across pool
+    // sections (resurrecting dead memoized values via `RcOc`).
+    static ocamlpool_generation: UnsafeCell<usize>;
 
     pub fn caml_named_value(name: *const std::ffi::c_char) -> *mut usize;
     pub fn caml_callbackN_exn(closure: usize, n: std::ffi::c_int, args: *const usize) -> usize;
@@ -68,7 +73,10 @@ impl Drop for Pool {
 impl Allocator for Pool {
     #[inline(always)]
     fn generation(&self) -> usize {
-        unsafe { ocamlpool_generation }
+        // SAFETY: `ocamlpool_generation` is mutated only by `ocamlpool_leave`,
+        // which runs on this same thread with no concurrent runtime access (per
+        // `Pool::new`'s contract), so a plain read here is sound.
+        unsafe { *ocamlpool_generation.get() }
     }
 
     #[inline(always)]
