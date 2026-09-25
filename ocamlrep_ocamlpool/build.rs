@@ -5,6 +5,10 @@
 // headers, `OCAMLLIB=$(ocamlopt.opt -config | grep standard_library:
 // | awk '{ print $2 }')`.
 fn ocamllib_dir() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("OCAMLLIB") {
+        return path.into();
+    }
+
     let mut sh = std::process::Command::new("sh");
     sh.args([
         "-c",
@@ -33,6 +37,7 @@ fn ocamllib_dir() -> std::path::PathBuf {
 fn main() {
     let ocaml_dir = ocamllib_dir();
 
+    println!("cargo:rerun-if-env-changed=OCAMLLIB");
     println!("cargo:rerun-if-changed=ocamlpool.c");
     cc::Build::new()
         .include(ocaml_dir.as_path())

@@ -8,6 +8,10 @@
 // headers, `OCAMLLIB=$(ocamlopt.opt -config | grep standard_library:
 // | awk '{ print $2 }')`.
 fn ocamllib_dir() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("OCAMLLIB") {
+        return path.into();
+    }
+
     let mut sh = std::process::Command::new("sh");
     sh.args([
         "-c",
@@ -34,6 +38,7 @@ fn ocamllib_dir() -> std::path::PathBuf {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=OCAMLLIB");
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo:rerun-if-changed=../../ocaml_version.c");
     cc::Build::new()
