@@ -17,12 +17,8 @@ unsafe extern "C" {
 
 // This test attempts to catch off by one issues in ocamlpool.c
 
-// Magic constant needs to fulfill two requirements:
-// Needs to be above the OCAMLPOOL_DEFAULT_SIZE constant in ocamlpool.h
-//   This requirement is easy to fulfill
-// Needs to be the exact size of memory block allocated by ocamlpool_reserve_block
-//   which is given by the Chunk_size call in chunk_alloc in ocamlpool.c
-//   This requirement requires some magic
+// Reserve a large block through `ocamlpool_reserve_block` to exercise the
+// shared-heap allocation path (this crashes on an off-by-one error).
 const MAGIC_MEMORY_SIZE: usize = 1053183;
 
 ocaml_registered_function! {
