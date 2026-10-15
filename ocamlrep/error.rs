@@ -59,7 +59,7 @@ impl fmt::Display for FromError {
             ExpectedBool(x) => write!(f, "Expected bool, but got {x}"),
             ExpectedChar(x) => write!(f, "Expected char, but got {x}"),
             ExpectedInt(x) => {
-                write!(f, "Expected integer value, but got block pointer {x:p}")
+                write!(f, "Expected integer value, but got block pointer 0x{x:x}")
             }
             Expected63BitInt(x) => write!(
                 f,
@@ -107,5 +107,18 @@ impl Error for FromError {
             | WrongBlockSize { .. }
             | UnexpectedCustomOps { .. } => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expected_int_display() {
+        assert_eq!(
+            FromError::ExpectedInt(0x1234).to_string(),
+            "Expected integer value, but got block pointer 0x1234"
+        );
     }
 }
