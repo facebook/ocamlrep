@@ -7,6 +7,7 @@
 #ifndef OCAMLPOOL_H
 #define OCAMLPOOL_H
 
+#include <caml/config.h>
 #include <caml/mlvalues.h>
 
 /* OCamlpool sections
